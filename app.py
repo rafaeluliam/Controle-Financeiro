@@ -1,11 +1,49 @@
 import streamlit as st
 import pandas as pd
-import os
 import calendar
 from datetime import datetime
 
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
+
 # ========================
-# Variáveis
+# 🔐 CONEXÃO GOOGLE SHEETS
+# ========================
+scope = [
+    "https://spreadsheets.google.com/feeds",
+    "https://www.googleapis.com/auth/drive"
+]
+
+creds = ServiceAccountCredentials.from_json_keyfile_dict(
+    st.secrets["gcp_service_account"],
+    scope
+)
+
+client = gspread.authorize(creds)
+sheet = client.open("Controle Financeiro").sheet1
+
+# ========================
+# 📥 CARREGAR DADOS
+# ========================
+dados = sheet.get_all_records()
+
+if dados:
+    df = pd.DataFrame(dados)
+else:
+    df = pd.DataFrame(columns=["Data", "Tipo", "Categoria", "Valor", "Descrição"])
+
+# ========================
+# 🔧 TRATAMENTO DE DADOS
+# ========================
+df["Data"] = pd.to_datetime(df["Data"], errors="coerce", dayfirst=True)
+df["Tipo"] = df["Tipo"].astype(str).str.strip()
+df["Categoria"] = df["Categoria"].astype(str).str.strip()
+df["Valor"] = pd.to_numeric(df["Valor"], errors="coerce")
+
+df["Mes"] = df["Data"].dt.to_period("M").astype(str)
+
+# ========================
+# VARIÁVEIS
 # ========================
 CATEGORIAS = {
     "Receita": ["Salário", "Freelance", "Outros"],
@@ -19,43 +57,15 @@ CONTAS_FIXAS = [
     {"nome": "Financiamento", "categoria": "Financiamento"},
 ]
 
-FILE = "dados_financeiros.csv"
-
 # ========================
-# Criar arquivo se não existir
-# ========================
-if not os.path.exists(FILE):
-    df = pd.DataFrame(columns=["Data", "Tipo", "Categoria", "Valor", "Descrição"])
-    df.to_csv(FILE, index=False)
-
-# ========================
-# Carregar dados
-# ========================
-df = pd.read_csv(FILE)
-
-# 🔥 CORREÇÕES IMPORTANTES
-df["Data"] = pd.to_datetime(df["Data"], errors="coerce", dayfirst=True)
-df["Tipo"] = df["Tipo"].astype(str).str.strip()
-df["Categoria"] = df["Categoria"].astype(str).str.strip()
-df["Valor"] = pd.to_numeric(df["Valor"], errors="coerce")
-
-# Criar coluna de mês (evita bugs)
-df["Mes"] = df["Data"].dt.to_period("M").astype(str)
-
-# garantir variável
-df_filtrado = df.copy()
-
-# ========================
-# Config página
+# CONFIG
 # ========================
 st.set_page_config(page_title="Controle Financeiro", layout="wide")
-
 st.title("💰 Controle Financeiro")
 
 # ========================
-# 📅 Filtro por mês
+# 📅 FILTRO MÊS
 # ========================
-
 if not df.empty:
     meses = (
         df["Mes"]
@@ -73,9 +83,11 @@ if not df.empty:
     )
 
     df_filtrado = df[df["Mes"] == mes]
+else:
+    df_filtrado = df.copy()
 
 # ========================
-# 📌 Contas do mês
+# 📌 CONTAS FIXAS
 # ========================
 st.subheader("📌 Contas do mês")
 
@@ -101,7 +113,7 @@ for i, conta in enumerate(CONTAS_FIXAS):
             st.success(f"🟢 {nome}\nR$ {valor_pago:.2f}")
 
 # ========================
-# ➕ Adicionar transação
+# ➕ ADICIONAR TRANSAÇÃO
 # ========================
 st.subheader("Adicionar transação")
 
@@ -123,17 +135,14 @@ with st.form("form"):
 
 if submitted:
     if valor > 0 and categoria:
-        nova_linha = pd.DataFrame(
-            [[pd.to_datetime(data), tipo, categoria, valor, descricao]],
-            columns=["Data", "Tipo", "Categoria", "Valor", "Descrição"]
-        )
 
-        df = pd.concat([df, nova_linha], ignore_index=True)
-
-        # 👉 AQUI É O MAIS IMPORTANTE
-        df["Mes"] = pd.to_datetime(df["Data"], errors="coerce").dt.to_period("M").astype(str)
-
-        df.to_csv(FILE, index=False)
+        sheet.append_row([
+            str(data),
+            tipo,
+            categoria,
+            float(valor),
+            descricao
+        ])
 
         st.success("Transação adicionada!")
         st.rerun()
@@ -141,7 +150,7 @@ if submitted:
         st.warning("Preencha os campos corretamente")
 
 # ========================
-# 📊 Resumo geral
+# 📊 RESUMO GERAL
 # ========================
 st.subheader("Resumo geral")
 
@@ -155,7 +164,7 @@ col2.metric("Despesas", f"R$ {despesas:.2f}")
 col3.metric("Saldo", f"R$ {saldo:.2f}")
 
 # ========================
-# 📈 Gráfico por categoria
+# 📈 GRÁFICO
 # ========================
 st.subheader("Gastos por categoria")
 
@@ -168,7 +177,7 @@ else:
     st.bar_chart(grafico)
 
 # ========================
-# 📋 Tabela
+# 📋 TABELA
 # ========================
 st.dataframe(
     df_filtrado.style.format({"Valor": "R$ {:.2f}"}),
@@ -176,7 +185,7 @@ st.dataframe(
 )
 
 # ========================
-# 📊 Resumo do mês
+# 📊 RESUMO MENSAL
 # ========================
 st.subheader("Resumo do mês")
 
@@ -189,13 +198,29 @@ col1.metric("Receitas (mês)", f"R$ {receitas_mes:.2f}")
 col2.metric("Despesas (mês)", f"R$ {despesas_mes:.2f}")
 col3.metric("Saldo (mês)", f"R$ {saldo_mes:.2f}")
 
+# ========================
+# 🔮 PREVISÃO
+# ========================
+st.subheader("Previsão do mês")
+
+if not df_filtrado.empty:
+    hoje = datetime.today()
+    dia_atual = hoje.day
+    dias_mes = calendar.monthrange(hoje.year, hoje.month)[1]
+
+    gasto_medio = despesas_mes / dia_atual if dia_atual > 0 else 0
+    previsao = gasto_medio * dias_mes
+
+    col1, col2 = st.columns(2)
+    col1.metric("Gasto médio diário", f"R$ {gasto_medio:.2f}")
+    col2.metric("Previsão do mês", f"R$ {previsao:.2f}")
 
 # ========================
-# 🧹 Limpar dados
+# 🧹 LIMPAR DADOS
 # ========================
 st.subheader("Gerenciamento")
 
 if st.button("⚠️ Apagar todos os dados"):
-    df = pd.DataFrame(columns=df.columns)
-    df.to_csv(FILE, index=False)
+    sheet.clear()
+    sheet.append_row(["Data", "Tipo", "Categoria", "Valor", "Descrição"])
     st.warning("Todos os dados foram apagados!")
