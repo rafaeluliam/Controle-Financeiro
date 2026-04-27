@@ -12,7 +12,7 @@ from oauth2client.service_account import ServiceAccountCredentials
 st.set_page_config(page_title="Controle Financeiro", layout="wide")
 
 # ========================
-# 🎨 ESTILO VISUAL
+# 🎨 CSS BÁSICO
 # ========================
 st.markdown("""
     <style>
@@ -21,15 +21,11 @@ st.markdown("""
             padding-left: 2rem;
             padding-right: 2rem;
         }
-
-        th, td {
-            font-size: 14px;
-        }
     </style>
 """, unsafe_allow_html=True)
 
 # ========================
-# 💳 CARD UI
+# 💳 CARD
 # ========================
 def card(titulo, valor, cor="#4F8BF9"):
     st.markdown(f"""
@@ -38,11 +34,9 @@ def card(titulo, valor, cor="#4F8BF9"):
             padding:18px;
             border-radius:14px;
             text-align:center;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.4);
+            margin-bottom:10px;
         ">
-            <div style="color:#9CA3AF; font-size:14px; margin-bottom:6px;">
-                {titulo}
-            </div>
+            <div style="color:#9CA3AF; font-size:14px;">{titulo}</div>
             <div style="color:{cor}; font-size:28px; font-weight:600;">
                 {valor}
             </div>
@@ -50,7 +44,7 @@ def card(titulo, valor, cor="#4F8BF9"):
     """, unsafe_allow_html=True)
 
 # ========================
-# 🔒 AUTENTICAÇÃO
+# 🔒 LOGIN
 # ========================
 if "autenticado" not in st.session_state:
     st.session_state.autenticado = False
@@ -125,7 +119,7 @@ if not df.empty:
     mes_atual_str = datetime.today().strftime("%Y-%m")
 
     mes = st.selectbox(
-        "📅 Selecione o mês",
+        "📅 Mês",
         meses,
         index=list(meses).index(mes_atual_str) if mes_atual_str in list(meses) else 0
     )
@@ -135,26 +129,28 @@ else:
     df_filtrado = df.copy()
 
 # ========================
-# UI
+# 🧭 SIDEBAR (APP STYLE)
 # ========================
-st.title("💰 Controle Financeiro")
+st.sidebar.title("💰 Financeiro")
 
-# 🔁 NOVA ORDEM DAS ABAS (como você pediu)
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
-    "➕ Adicionar",
-    "📊 Resumo",
-    "📋 Lançamentos",
-    "📈 Análises",
-    "⚙️ Gerenciamento"
-])
+menu = st.sidebar.radio(
+    "Navegação",
+    [
+        "📊 Dashboard",
+        "➕ Adicionar",
+        "📋 Lançamentos",
+        "📈 Análises",
+        "⚙️ Configurações"
+    ]
+)
 
 # ========================
 # ➕ ADICIONAR
 # ========================
-with tab1:
-    st.subheader("➕ Nova transação")
+if menu == "➕ Adicionar":
+    st.title("➕ Nova transação")
 
-    tipo = st.selectbox("Tipo", ["Receita", "Despesa"], key="tipo_add")
+    tipo = st.selectbox("Tipo", ["Receita", "Despesa"])
 
     with st.form("form"):
         col1, col2 = st.columns(2)
@@ -168,9 +164,9 @@ with tab1:
 
         descricao = st.text_input("Descrição")
 
-        submitted = st.form_submit_button("Adicionar")
+        submit = st.form_submit_button("Adicionar")
 
-    if submitted:
+    if submit:
         if valor > 0:
             sheet.append_row([
                 str(data),
@@ -181,14 +177,12 @@ with tab1:
             ])
             st.success("Transação adicionada!")
             st.rerun()
-        else:
-            st.warning("Valor inválido")
 
 # ========================
-# 📊 RESUMO
+# 📊 DASHBOARD
 # ========================
-with tab2:
-    st.subheader("📊 Visão geral")
+if menu == "📊 Dashboard":
+    st.title("📊 Dashboard")
 
     receitas = df[df["Tipo"] == "Receita"]["Valor"].sum()
     despesas = df[df["Tipo"] == "Despesa"]["Valor"].sum()
@@ -207,7 +201,7 @@ with tab2:
 
     st.divider()
 
-    st.subheader("📅 Resumo do mês")
+    st.subheader("📅 Mês selecionado")
 
     receitas_mes = df_filtrado[df_filtrado["Tipo"] == "Receita"]["Valor"].sum()
     despesas_mes = df_filtrado[df_filtrado["Tipo"] == "Despesa"]["Valor"].sum()
@@ -216,13 +210,13 @@ with tab2:
     c1, c2, c3 = st.columns(3)
 
     with c1:
-        card("Receitas (mês)", f"R$ {receitas_mes:.2f}", "#22C55E")
+        card("Receitas", f"R$ {receitas_mes:.2f}", "#22C55E")
 
     with c2:
-        card("Despesas (mês)", f"R$ {despesas_mes:.2f}", "#EF4444")
+        card("Despesas", f"R$ {despesas_mes:.2f}", "#EF4444")
 
     with c3:
-        card("Saldo (mês)", f"R$ {saldo_mes:.2f}", "#3B82F6")
+        card("Saldo", f"R$ {saldo_mes:.2f}", "#3B82F6")
 
     st.divider()
 
@@ -239,34 +233,31 @@ with tab2:
         if lancado.empty:
             st.error(f"🔴 {conta['nome']}")
         else:
-            valor_pago = lancado["Valor"].sum()
-            st.success(f"🟢 {conta['nome']} — R$ {valor_pago:.2f}")
+            st.success(f"🟢 {conta['nome']} — R$ {lancado['Valor'].sum():.2f}")
 
 # ========================
 # 📋 LANÇAMENTOS
 # ========================
-with tab3:
-    st.subheader("📋 Todos os lançamentos")
-
-    st.caption("💡 Use o filtro de mês para análise")
+if menu == "📋 Lançamentos":
+    st.title("📋 Lançamentos")
 
     st.dataframe(
         df_filtrado,
         use_container_width=True,
         hide_index=True,
-        height=420
+        height=500
     )
 
 # ========================
 # 📈 ANÁLISES
 # ========================
-with tab4:
-    st.subheader("📈 Gastos por categoria")
+if menu == "📈 Análises":
+    st.title("📈 Análises")
 
     despesas_df = df_filtrado[df_filtrado["Tipo"] == "Despesa"]
 
     if despesas_df.empty:
-        st.info("Nenhuma despesa no mês")
+        st.info("Sem dados no período")
     else:
         resumo = despesas_df.groupby("Categoria", as_index=False)["Valor"].sum()
 
@@ -288,25 +279,18 @@ with tab4:
         st.plotly_chart(fig, use_container_width=True)
 
 # ========================
-# ⚙️ GERENCIAMENTO
+# ⚙️ CONFIG
 # ========================
-with tab5:
-    st.subheader("⚙️ Gerenciamento")
+if menu == "⚙️ Configurações":
+    st.title("⚙️ Configurações")
 
-    if "confirmar_exclusao" not in st.session_state:
-        st.session_state.confirmar_exclusao = False
+    st.warning("Área de gerenciamento")
 
     if st.button("⚠️ Apagar todos os dados"):
-        st.session_state.confirmar_exclusao = True
+        senha = st.text_input("Confirme a senha", type="password")
 
-    if st.session_state.confirmar_exclusao:
-        senha_admin = st.text_input("Confirme a senha", type="password")
-
-        if senha_admin == st.secrets["app_password"]:
+        if senha == st.secrets["app_password"]:
             sheet.clear()
             sheet.append_row(["Data", "Tipo", "Categoria", "Valor", "Descrição"])
-            st.success("Dados apagados com sucesso")
-            st.session_state.confirmar_exclusao = False
+            st.success("Dados apagados")
             st.rerun()
-        elif senha_admin:
-            st.error("Senha incorreta")
