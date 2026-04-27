@@ -12,32 +12,39 @@ from oauth2client.service_account import ServiceAccountCredentials
 st.set_page_config(page_title="Controle Financeiro", layout="wide")
 
 # ========================
-# 🎨 CSS BÁSICO
+# 📱 DETECÇÃO MOBILE SIMPLES
+# ========================
+is_mobile = st.query_params.get("mobile", ["0"])[0] == "1"
+
+# ========================
+# 🎨 CSS MOBILE-FIRST
 # ========================
 st.markdown("""
-    <style>
-        .block-container {
-            padding-top: 2rem;
-            padding-left: 2rem;
-            padding-right: 2rem;
-        }
-    </style>
+<style>
+    .block-container {
+        padding-top: 1.2rem;
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+</style>
 """, unsafe_allow_html=True)
 
 # ========================
-# 💳 CARD
+# 💳 CARD UI
 # ========================
 def card(titulo, valor, cor="#4F8BF9"):
     st.markdown(f"""
         <div style="
             background-color:#161B22;
-            padding:18px;
+            padding:16px;
             border-radius:14px;
             text-align:center;
             margin-bottom:10px;
         ">
-            <div style="color:#9CA3AF; font-size:14px;">{titulo}</div>
-            <div style="color:{cor}; font-size:28px; font-weight:600;">
+            <div style="color:#9CA3AF; font-size:14px;">
+                {titulo}
+            </div>
+            <div style="color:{cor}; font-size:26px; font-weight:600;">
                 {valor}
             </div>
         </div>
@@ -129,20 +136,21 @@ else:
     df_filtrado = df.copy()
 
 # ========================
-# 🧭 SIDEBAR (APP STYLE)
+# 🧭 SIDEBAR (MOBILE-FIRST + ORDEM NOVA)
 # ========================
-st.sidebar.title("💰 Financeiro")
+with st.sidebar:
+    st.title("💰 Menu")
 
-menu = st.sidebar.radio(
-    "Navegação",
-    [
-        "📊 Dashboard",
-        "➕ Adicionar",
-        "📋 Lançamentos",
-        "📈 Análises",
-        "⚙️ Configurações"
-    ]
-)
+    menu = st.radio(
+        "Navegação",
+        [
+            "➕ Adicionar",
+            "📊 Dashboard",
+            "📋 Lançamentos",
+            "📈 Análises",
+            "⚙️ Configurações"
+        ]
+    )
 
 # ========================
 # ➕ ADICIONAR
@@ -179,7 +187,7 @@ if menu == "➕ Adicionar":
             st.rerun()
 
 # ========================
-# 📊 DASHBOARD
+# 📊 DASHBOARD (MOBILE-FIRST)
 # ========================
 if menu == "📊 Dashboard":
     st.title("📊 Dashboard")
@@ -188,16 +196,18 @@ if menu == "📊 Dashboard":
     despesas = df[df["Tipo"] == "Despesa"]["Valor"].sum()
     saldo = receitas - despesas
 
-    c1, c2, c3 = st.columns(3)
-
-    with c1:
+    if is_mobile:
         card("Receitas", f"R$ {receitas:.2f}", "#22C55E")
-
-    with c2:
         card("Despesas", f"R$ {despesas:.2f}", "#EF4444")
-
-    with c3:
         card("Saldo", f"R$ {saldo:.2f}", "#3B82F6")
+    else:
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            card("Receitas", f"R$ {receitas:.2f}", "#22C55E")
+        with c2:
+            card("Despesas", f"R$ {despesas:.2f}", "#EF4444")
+        with c3:
+            card("Saldo", f"R$ {saldo:.2f}", "#3B82F6")
 
     st.divider()
 
@@ -207,16 +217,18 @@ if menu == "📊 Dashboard":
     despesas_mes = df_filtrado[df_filtrado["Tipo"] == "Despesa"]["Valor"].sum()
     saldo_mes = receitas_mes - despesas_mes
 
-    c1, c2, c3 = st.columns(3)
-
-    with c1:
+    if is_mobile:
         card("Receitas", f"R$ {receitas_mes:.2f}", "#22C55E")
-
-    with c2:
         card("Despesas", f"R$ {despesas_mes:.2f}", "#EF4444")
-
-    with c3:
         card("Saldo", f"R$ {saldo_mes:.2f}", "#3B82F6")
+    else:
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            card("Receitas", f"R$ {receitas_mes:.2f}", "#22C55E")
+        with c2:
+            card("Despesas", f"R$ {despesas_mes:.2f}", "#EF4444")
+        with c3:
+            card("Saldo", f"R$ {saldo_mes:.2f}", "#3B82F6")
 
     st.divider()
 
@@ -245,7 +257,7 @@ if menu == "📋 Lançamentos":
         df_filtrado,
         use_container_width=True,
         hide_index=True,
-        height=500
+        height=400 if is_mobile else 600
     )
 
 # ========================
@@ -256,35 +268,28 @@ if menu == "📈 Análises":
 
     despesas_df = df_filtrado[df_filtrado["Tipo"] == "Despesa"]
 
-    if despesas_df.empty:
-        st.info("Sem dados no período")
-    else:
+    if not despesas_df.empty:
         resumo = despesas_df.groupby("Categoria", as_index=False)["Valor"].sum()
 
         fig = px.bar(
             resumo,
             x="Categoria",
             y="Valor",
-            text="Valor",
-            color="Valor"
+            text="Valor"
         )
 
         fig.update_layout(
-            plot_bgcolor="#0E1117",
-            paper_bgcolor="#0E1117",
-            font_color="#E6EDF3",
-            showlegend=False
+            height=300 if is_mobile else 450,
+            margin=dict(l=10, r=10, t=30, b=10)
         )
 
         st.plotly_chart(fig, use_container_width=True)
 
 # ========================
-# ⚙️ CONFIG
+# ⚙️ CONFIGURAÇÕES
 # ========================
 if menu == "⚙️ Configurações":
     st.title("⚙️ Configurações")
-
-    st.warning("Área de gerenciamento")
 
     if st.button("⚠️ Apagar todos os dados"):
         senha = st.text_input("Confirme a senha", type="password")
