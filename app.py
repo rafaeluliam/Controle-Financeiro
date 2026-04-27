@@ -6,11 +6,6 @@ from datetime import datetime
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
-senha = st.text_input("Senha", type="password")
-
-if senha != st.secrets["app_password"]:
-    st.stop()
-
 # ========================
 # 🔐 CONEXÃO GOOGLE SHEETS
 # ========================
@@ -66,6 +61,14 @@ CONTAS_FIXAS = [
 # CONFIG
 # ========================
 st.set_page_config(page_title="Controle Financeiro", layout="wide")
+
+# 🔒 BLOQUEIO POR SENHA (COLOCA AQUI)
+senha = st.text_input("Senha", type="password")
+
+if senha != st.secrets["app_password"]:
+    st.warning("Digite a senha para acessar")
+    st.stop()
+
 st.title("💰 Controle Financeiro")
 
 # ========================
