@@ -208,22 +208,6 @@ c2.metric("Despesas (mês)", f"R$ {despesas_mes:.2f}")
 c3.metric("Saldo (mês)", f"R$ {saldo_mes:.2f}")
 
 # ========================
-# 🔮 PREVISÃO
-# ========================
-st.subheader("Previsão do mês")
-
-if not df_filtrado.empty:
-    hoje = datetime.today()
-    dias_mes = calendar.monthrange(hoje.year, hoje.month)[1]
-
-    gasto_medio = despesas_mes / hoje.day if hoje.day > 0 else 0
-    previsao = gasto_medio * dias_mes
-
-    c1, c2 = st.columns(2)
-    c1.metric("Média diária", f"R$ {gasto_medio:.2f}")
-    c2.metric("Previsão", f"R$ {previsao:.2f}")
-
-# ========================
 # 🧹 GERENCIAMENTO (PROTEGIDO)
 # ========================
 st.subheader("Gerenciamento")
