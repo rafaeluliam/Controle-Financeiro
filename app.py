@@ -12,6 +12,45 @@ from oauth2client.service_account import ServiceAccountCredentials
 st.set_page_config(page_title="Controle Financeiro", layout="wide")
 
 # ========================
+# 📱 DETECÇÃO MOBILE SIMPLES
+# ========================
+is_mobile = st.query_params.get("mobile", ["0"])[0] == "1"
+
+# ========================
+# 🎨 CSS MOBILE-FIRST
+# ========================
+st.markdown("""
+<style>
+    .block-container {
+        padding-top: 1.2rem;
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# ========================
+# 💳 CARD UI
+# ========================
+def card(titulo, valor, cor="#4F8BF9"):
+    st.markdown(f"""
+        <div style="
+            background-color:#161B22;
+            padding:16px;
+            border-radius:14px;
+            text-align:center;
+            margin-bottom:10px;
+        ">
+            <div style="color:#9CA3AF; font-size:14px;">
+                {titulo}
+            </div>
+            <div style="color:{cor}; font-size:26px; font-weight:600;">
+                {valor}
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+
+# ========================
 # 🔒 LOGIN
 # ========================
 if "autenticado" not in st.session_state:
@@ -27,77 +66,6 @@ if not st.session_state.autenticado:
     else:
         st.warning("Digite a senha para acessar")
         st.stop()
-
-# ========================
-# 📱 STATE NAVEGAÇÃO (SEM RELOAD)
-# ========================
-if "page" not in st.session_state:
-    st.session_state.page = "dashboard"
-
-# ========================
-# 🎨 CSS MOBILE FIRST + BOTTOM NAV
-# ========================
-st.markdown("""
-<style>
-
-.block-container {
-    padding-top: 1rem;
-    padding-left: 1rem;
-    padding-right: 1rem;
-    padding-bottom: 80px;
-}
-
-.card {
-    background-color: #161B22;
-    padding: 16px;
-    border-radius: 14px;
-    text-align: center;
-    margin-bottom: 10px;
-}
-
-/* BOTTOM NAV FIXA */
-.bottom-nav {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    height: 65px;
-    background-color: #161B22;
-    border-top: 1px solid #2A2F3A;
-    display: flex;
-    justify-content: space-around;
-    align-items: center;
-    z-index: 9999;
-}
-
-/* BOTÕES */
-.nav-btn {
-    background: none;
-    border: none;
-    font-size: 22px;
-    color: #9CA3AF;
-    cursor: pointer;
-}
-
-.nav-btn.active {
-    color: #4F8BF9;
-}
-
-</style>
-""", unsafe_allow_html=True)
-
-# ========================
-# 💳 CARD
-# ========================
-def card(titulo, valor, cor="#4F8BF9"):
-    st.markdown(f"""
-        <div class="card">
-            <div style="color:#9CA3AF; font-size:14px;">{titulo}</div>
-            <div style="color:{cor}; font-size:26px; font-weight:600;">
-                {valor}
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
 
 # ========================
 # 🔐 GOOGLE SHEETS
@@ -151,7 +119,7 @@ CONTAS_FIXAS = [
 ]
 
 # ========================
-# FILTRO MÊS
+# FILTRO
 # ========================
 if not df.empty:
     meses = df["Mes"].dropna().drop_duplicates().sort_values()
@@ -168,44 +136,27 @@ else:
     df_filtrado = df.copy()
 
 # ========================
-# 📱 BOTTOM NAV FUNCIONAL
+# 🧭 SIDEBAR (MOBILE-FIRST + ORDEM NOVA)
 # ========================
-def set_page(page):
-    st.session_state.page = page
+with st.sidebar:
+    st.title("💰 Menu")
 
-page = st.session_state.page
-
-st.markdown('<div class="bottom-nav">', unsafe_allow_html=True)
-
-col1, col2, col3, col4, col5 = st.columns(5)
-
-with col1:
-    if st.button("📊", key="dash"):
-        set_page("dashboard")
-
-with col2:
-    if st.button("➕", key="add"):
-        set_page("add")
-
-with col3:
-    if st.button("📋", key="list"):
-        set_page("list")
-
-with col4:
-    if st.button("📈", key="stats"):
-        set_page("stats")
-
-with col5:
-    if st.button("⚙️", key="set"):
-        set_page("settings")
-
-st.markdown("</div>", unsafe_allow_html=True)
+    menu = st.radio(
+        "Navegação",
+        [
+            "➕ Adicionar",
+            "📊 Dashboard",
+            "📋 Lançamentos",
+            "📈 Análises",
+            "⚙️ Configurações"
+        ]
+    )
 
 # ========================
 # ➕ ADICIONAR
 # ========================
-if page == "add":
-    st.title("➕ Adicionar transação")
+if menu == "➕ Adicionar":
+    st.title("➕ Nova transação")
 
     tipo = st.selectbox("Tipo", ["Receita", "Despesa"])
 
@@ -236,54 +187,83 @@ if page == "add":
             st.rerun()
 
 # ========================
-# 📊 DASHBOARD
+# 📊 DASHBOARD (MOBILE-FIRST)
 # ========================
-if page == "dashboard":
+if menu == "📊 Dashboard":
     st.title("📊 Dashboard")
 
     receitas = df[df["Tipo"] == "Receita"]["Valor"].sum()
     despesas = df[df["Tipo"] == "Despesa"]["Valor"].sum()
     saldo = receitas - despesas
 
-    c1, c2, c3 = st.columns(3)
-    with c1:
+    if is_mobile:
         card("Receitas", f"R$ {receitas:.2f}", "#22C55E")
-    with c2:
         card("Despesas", f"R$ {despesas:.2f}", "#EF4444")
-    with c3:
         card("Saldo", f"R$ {saldo:.2f}", "#3B82F6")
+    else:
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            card("Receitas", f"R$ {receitas:.2f}", "#22C55E")
+        with c2:
+            card("Despesas", f"R$ {despesas:.2f}", "#EF4444")
+        with c3:
+            card("Saldo", f"R$ {saldo:.2f}", "#3B82F6")
 
     st.divider()
+
+    st.subheader("📅 Mês selecionado")
 
     receitas_mes = df_filtrado[df_filtrado["Tipo"] == "Receita"]["Valor"].sum()
     despesas_mes = df_filtrado[df_filtrado["Tipo"] == "Despesa"]["Valor"].sum()
     saldo_mes = receitas_mes - despesas_mes
 
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        card("Receitas (mês)", f"R$ {receitas_mes:.2f}", "#22C55E")
-    with c2:
-        card("Despesas (mês)", f"R$ {despesas_mes:.2f}", "#EF4444")
-    with c3:
-        card("Saldo (mês)", f"R$ {saldo_mes:.2f}", "#3B82F6")
+    if is_mobile:
+        card("Receitas", f"R$ {receitas_mes:.2f}", "#22C55E")
+        card("Despesas", f"R$ {despesas_mes:.2f}", "#EF4444")
+        card("Saldo", f"R$ {saldo_mes:.2f}", "#3B82F6")
+    else:
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            card("Receitas", f"R$ {receitas_mes:.2f}", "#22C55E")
+        with c2:
+            card("Despesas", f"R$ {despesas_mes:.2f}", "#EF4444")
+        with c3:
+            card("Saldo", f"R$ {saldo_mes:.2f}", "#3B82F6")
+
+    st.divider()
+
+    st.subheader("📌 Contas fixas")
+
+    mes_atual = datetime.today().strftime("%Y-%m")
+
+    for conta in CONTAS_FIXAS:
+        lancado = df[
+            (df["Categoria"] == conta["categoria"]) &
+            (df["Mes"] == mes_atual)
+        ]
+
+        if lancado.empty:
+            st.error(f"🔴 {conta['nome']}")
+        else:
+            st.success(f"🟢 {conta['nome']} — R$ {lancado['Valor'].sum():.2f}")
 
 # ========================
-# 📋 LISTA
+# 📋 LANÇAMENTOS
 # ========================
-if page == "list":
+if menu == "📋 Lançamentos":
     st.title("📋 Lançamentos")
 
     st.dataframe(
         df_filtrado,
         use_container_width=True,
         hide_index=True,
-        height=500
+        height=400 if is_mobile else 600
     )
 
 # ========================
 # 📈 ANÁLISES
 # ========================
-if page == "stats":
+if menu == "📈 Análises":
     st.title("📈 Análises")
 
     despesas_df = df_filtrado[df_filtrado["Tipo"] == "Despesa"]
@@ -298,14 +278,17 @@ if page == "stats":
             text="Valor"
         )
 
+        fig.update_layout(
+            height=300 if is_mobile else 450,
+            margin=dict(l=10, r=10, t=30, b=10)
+        )
+
         st.plotly_chart(fig, use_container_width=True)
-    else:
-        st.info("Sem dados no período")
 
 # ========================
-# ⚙️ CONFIG
+# ⚙️ CONFIGURAÇÕES
 # ========================
-if page == "settings":
+if menu == "⚙️ Configurações":
     st.title("⚙️ Configurações")
 
     if st.button("⚠️ Apagar todos os dados"):
