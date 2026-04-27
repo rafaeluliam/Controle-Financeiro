@@ -32,6 +32,11 @@ if dados:
 else:
     df = pd.DataFrame(columns=["Data", "Tipo", "Categoria", "Valor", "Descrição"])
 
+senha = st.text_input("Senha", type="password")
+
+if senha != st.secrets["app_password"]:
+    st.stop()
+
 # ========================
 # 🔧 TRATAMENTO DE DADOS
 # ========================
