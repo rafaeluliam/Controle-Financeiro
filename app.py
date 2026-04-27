@@ -77,6 +77,7 @@ CONTAS_FIXAS = [
     {"nome": "Energia", "categoria": "Energia"},
     {"nome": "Água", "categoria": "Água"},
     {"nome": "Financiamento", "categoria": "Financiamento"},
+    {"nome": "Internet", "categoria": "Internet"},
 ]
 
 # ========================
