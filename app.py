@@ -103,17 +103,53 @@ else:
 st.title("💰 Controle Financeiro")
 
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    "➕ Adicionar",
     "📊 Resumo",
     "📋 Lançamentos",
-    "➕ Adicionar",
     "📈 Análises",
     "⚙️ Gerenciamento"
 ])
 
 # ========================
-# 📊 RESUMO
+# ➕ ADICIONAR
 # ========================
 with tab1:
+    st.subheader("Adicionar transação")
+
+    tipo = st.selectbox("Tipo", ["Receita", "Despesa"], key="tipo_add")
+
+    with st.form("form"):
+        col1, col2 = st.columns(2)
+
+        with col1:
+            data = st.date_input("Data", datetime.today())
+
+        with col2:
+            categoria = st.selectbox("Categoria", CATEGORIAS[tipo])
+            valor = st.number_input("Valor", min_value=0.0, format="%.2f")
+
+        descricao = st.text_input("Descrição")
+
+        submitted = st.form_submit_button("Adicionar")
+
+    if submitted:
+        if valor > 0 and categoria:
+            sheet.append_row([
+                str(data),
+                tipo,
+                categoria,
+                float(valor),
+                descricao
+            ])
+            st.success("Transação adicionada!")
+            st.rerun()
+        else:
+            st.warning("Preencha corretamente")
+
+# ========================
+# 📊 RESUMO
+# ========================
+with tab2:
     st.subheader("Resumo geral")
 
     receitas = df[df["Tipo"] == "Receita"]["Valor"].sum()
@@ -157,49 +193,13 @@ with tab1:
 # ========================
 # 📋 LANÇAMENTOS
 # ========================
-with tab2:
+with tab3:
     st.subheader("Todos os lançamentos")
 
     st.dataframe(
         df_filtrado.style.format({"Valor": "R$ {:.2f}"}),
         use_container_width=True
     )
-
-# ========================
-# ➕ ADICIONAR
-# ========================
-with tab3:
-    st.subheader("Adicionar transação")
-
-    tipo = st.selectbox("Tipo", ["Receita", "Despesa"], key="tipo_add")
-
-    with st.form("form"):
-        col1, col2 = st.columns(2)
-
-        with col1:
-            data = st.date_input("Data", datetime.today())
-
-        with col2:
-            categoria = st.selectbox("Categoria", CATEGORIAS[tipo])
-            valor = st.number_input("Valor", min_value=0.0, format="%.2f")
-
-        descricao = st.text_input("Descrição")
-
-        submitted = st.form_submit_button("Adicionar")
-
-    if submitted:
-        if valor > 0 and categoria:
-            sheet.append_row([
-                str(data),
-                tipo,
-                categoria,
-                float(valor),
-                descricao
-            ])
-            st.success("Transação adicionada!")
-            st.rerun()
-        else:
-            st.warning("Preencha corretamente")
 
 # ========================
 # 📈 ANÁLISES
