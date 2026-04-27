@@ -3,12 +3,34 @@ import pandas as pd
 import calendar
 from datetime import datetime
 
-import gspread
-from oauth2client.service_account import ServiceAccountCredentials
+# ========================
+# CONFIG
+# ========================
+st.set_page_config(page_title="Controle Financeiro", layout="wide")
+
+# ========================
+# 🔒 AUTENTICAÇÃO (ANTES DE TUDO)
+# ========================
+if "autenticado" not in st.session_state:
+    st.session_state.autenticado = False
+
+if not st.session_state.autenticado:
+    st.title("🔒 Acesso restrito")
+    senha = st.text_input("Senha", type="password")
+
+    if senha == st.secrets["app_password"]:
+        st.session_state.autenticado = True
+        st.rerun()
+    else:
+        st.warning("Digite a senha para acessar")
+        st.stop()
 
 # ========================
 # 🔐 CONEXÃO GOOGLE SHEETS
 # ========================
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
+
 scope = [
     "https://spreadsheets.google.com/feeds",
     "https://www.googleapis.com/auth/drive"
@@ -33,7 +55,7 @@ else:
     df = pd.DataFrame(columns=["Data", "Tipo", "Categoria", "Valor", "Descrição"])
 
 # ========================
-# 🔧 TRATAMENTO DE DADOS
+# 🔧 TRATAMENTO
 # ========================
 df["Data"] = pd.to_datetime(df["Data"], errors="coerce", dayfirst=True)
 df["Tipo"] = df["Tipo"].astype(str).str.strip()
@@ -58,30 +80,15 @@ CONTAS_FIXAS = [
 ]
 
 # ========================
-# CONFIG
+# UI
 # ========================
-st.set_page_config(page_title="Controle Financeiro", layout="wide")
-
-# 🔒 BLOQUEIO POR SENHA (COLOCA AQUI)
-senha = st.text_input("Senha", type="password")
-
-if senha != st.secrets["app_password"]:
-    st.warning("Digite a senha para acessar")
-    st.stop()
-
 st.title("💰 Controle Financeiro")
 
 # ========================
-# 📅 FILTRO MÊS
+# 📅 FILTRO
 # ========================
 if not df.empty:
-    meses = (
-        df["Mes"]
-        .dropna()
-        .drop_duplicates()
-        .sort_values()
-    )
-
+    meses = df["Mes"].dropna().drop_duplicates().sort_values()
     mes_atual_str = datetime.today().strftime("%Y-%m")
 
     mes = st.selectbox(
@@ -99,29 +106,24 @@ else:
 # ========================
 st.subheader("📌 Contas do mês")
 
-hoje = datetime.today()
-mes_atual = hoje.strftime("%Y-%m")
-
+mes_atual = datetime.today().strftime("%Y-%m")
 cols = st.columns(len(CONTAS_FIXAS))
 
 for i, conta in enumerate(CONTAS_FIXAS):
     with cols[i]:
-        nome = conta["nome"]
-        categoria = conta["categoria"]
-
         lancado = df[
-            (df["Categoria"] == categoria) &
+            (df["Categoria"] == conta["categoria"]) &
             (df["Mes"] == mes_atual)
         ]
 
         if lancado.empty:
-            st.error(f"🔴 {nome}")
+            st.error(f"🔴 {conta['nome']}")
         else:
             valor_pago = lancado["Valor"].sum()
-            st.success(f"🟢 {nome}\nR$ {valor_pago:.2f}")
+            st.success(f"🟢 {conta['nome']}\nR$ {valor_pago:.2f}")
 
 # ========================
-# ➕ ADICIONAR TRANSAÇÃO
+# ➕ ADICIONAR
 # ========================
 st.subheader("Adicionar transação")
 
@@ -143,7 +145,6 @@ with st.form("form"):
 
 if submitted:
     if valor > 0 and categoria:
-
         sheet.append_row([
             str(data),
             tipo,
@@ -151,14 +152,13 @@ if submitted:
             float(valor),
             descricao
         ])
-
         st.success("Transação adicionada!")
         st.rerun()
     else:
-        st.warning("Preencha os campos corretamente")
+        st.warning("Preencha corretamente")
 
 # ========================
-# 📊 RESUMO GERAL
+# 📊 RESUMO
 # ========================
 st.subheader("Resumo geral")
 
@@ -166,10 +166,10 @@ receitas = df[df["Tipo"] == "Receita"]["Valor"].sum()
 despesas = df[df["Tipo"] == "Despesa"]["Valor"].sum()
 saldo = receitas - despesas
 
-col1, col2, col3 = st.columns(3)
-col1.metric("Receitas", f"R$ {receitas:.2f}")
-col2.metric("Despesas", f"R$ {despesas:.2f}")
-col3.metric("Saldo", f"R$ {saldo:.2f}")
+c1, c2, c3 = st.columns(3)
+c1.metric("Receitas", f"R$ {receitas:.2f}")
+c2.metric("Despesas", f"R$ {despesas:.2f}")
+c3.metric("Saldo", f"R$ {saldo:.2f}")
 
 # ========================
 # 📈 GRÁFICO
@@ -179,7 +179,7 @@ st.subheader("Gastos por categoria")
 despesas_df = df_filtrado[df_filtrado["Tipo"] == "Despesa"]
 
 if despesas_df.empty:
-    st.info("Nenhuma despesa encontrada para este mês")
+    st.info("Nenhuma despesa no mês")
 else:
     grafico = despesas_df.groupby("Categoria")["Valor"].sum()
     st.bar_chart(grafico)
@@ -193,7 +193,7 @@ st.dataframe(
 )
 
 # ========================
-# 📊 RESUMO MENSAL
+# 📊 RESUMO MÊS
 # ========================
 st.subheader("Resumo do mês")
 
@@ -201,10 +201,10 @@ receitas_mes = df_filtrado[df_filtrado["Tipo"] == "Receita"]["Valor"].sum()
 despesas_mes = df_filtrado[df_filtrado["Tipo"] == "Despesa"]["Valor"].sum()
 saldo_mes = receitas_mes - despesas_mes
 
-col1, col2, col3 = st.columns(3)
-col1.metric("Receitas (mês)", f"R$ {receitas_mes:.2f}")
-col2.metric("Despesas (mês)", f"R$ {despesas_mes:.2f}")
-col3.metric("Saldo (mês)", f"R$ {saldo_mes:.2f}")
+c1, c2, c3 = st.columns(3)
+c1.metric("Receitas (mês)", f"R$ {receitas_mes:.2f}")
+c2.metric("Despesas (mês)", f"R$ {despesas_mes:.2f}")
+c3.metric("Saldo (mês)", f"R$ {saldo_mes:.2f}")
 
 # ========================
 # 🔮 PREVISÃO
@@ -213,22 +213,34 @@ st.subheader("Previsão do mês")
 
 if not df_filtrado.empty:
     hoje = datetime.today()
-    dia_atual = hoje.day
     dias_mes = calendar.monthrange(hoje.year, hoje.month)[1]
 
-    gasto_medio = despesas_mes / dia_atual if dia_atual > 0 else 0
+    gasto_medio = despesas_mes / hoje.day if hoje.day > 0 else 0
     previsao = gasto_medio * dias_mes
 
-    col1, col2 = st.columns(2)
-    col1.metric("Gasto médio diário", f"R$ {gasto_medio:.2f}")
-    col2.metric("Previsão do mês", f"R$ {previsao:.2f}")
+    c1, c2 = st.columns(2)
+    c1.metric("Média diária", f"R$ {gasto_medio:.2f}")
+    c2.metric("Previsão", f"R$ {previsao:.2f}")
 
 # ========================
-# 🧹 LIMPAR DADOS
+# 🧹 GERENCIAMENTO (PROTEGIDO)
 # ========================
 st.subheader("Gerenciamento")
 
+if "confirmar_exclusao" not in st.session_state:
+    st.session_state.confirmar_exclusao = False
+
 if st.button("⚠️ Apagar todos os dados"):
-    sheet.clear()
-    sheet.append_row(["Data", "Tipo", "Categoria", "Valor", "Descrição"])
-    st.warning("Todos os dados foram apagados!")
+    st.session_state.confirmar_exclusao = True
+
+if st.session_state.confirmar_exclusao:
+    senha_admin = st.text_input("Confirme a senha para apagar", type="password")
+
+    if senha_admin == st.secrets["app_password"]:
+        sheet.clear()
+        sheet.append_row(["Data", "Tipo", "Categoria", "Valor", "Descrição"])
+        st.success("Dados apagados com sucesso")
+        st.session_state.confirmar_exclusao = False
+        st.rerun()
+    elif senha_admin:
+        st.error("Senha incorreta")
