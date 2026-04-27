@@ -1,15 +1,40 @@
 import streamlit as st
 import pandas as pd
-import calendar
 from datetime import datetime
 
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
+import plotly.express as px
 
 # ========================
 # CONFIG
 # ========================
 st.set_page_config(page_title="Controle Financeiro", layout="wide")
+
+# ========================
+# 🎨 ESTILO VISUAL
+# ========================
+st.markdown("""
+    <style>
+        .block-container {
+            padding-top: 2rem;
+            padding-left: 2rem;
+            padding-right: 2rem;
+        }
+
+        /* melhora cards métricos */
+        div[data-testid="metric-container"] {
+            background-color: #161B22;
+            border-radius: 12px;
+            padding: 15px;
+        }
+
+        /* remove poluição visual */
+        th, td {
+            font-size: 14px;
+        }
+    </style>
+""", unsafe_allow_html=True)
 
 # ========================
 # 🔒 AUTENTICAÇÃO
@@ -61,7 +86,6 @@ df["Data"] = pd.to_datetime(df["Data"], errors="coerce", dayfirst=True)
 df["Tipo"] = df["Tipo"].astype(str).str.strip()
 df["Categoria"] = df["Categoria"].astype(str).str.strip()
 df["Valor"] = pd.to_numeric(df["Valor"], errors="coerce")
-
 df["Mes"] = df["Data"].dt.to_period("M").astype(str)
 
 # ========================
@@ -81,14 +105,14 @@ CONTAS_FIXAS = [
 ]
 
 # ========================
-# FILTRO DE MÊS
+# FILTRO
 # ========================
 if not df.empty:
     meses = df["Mes"].dropna().drop_duplicates().sort_values()
     mes_atual_str = datetime.today().strftime("%Y-%m")
 
     mes = st.selectbox(
-        "Selecione o mês",
+        "📅 Selecione o mês",
         meses,
         index=list(meses).index(mes_atual_str) if mes_atual_str in list(meses) else 0
     )
@@ -98,23 +122,83 @@ else:
     df_filtrado = df.copy()
 
 # ========================
-# UI COM ABAS
+# UI
 # ========================
 st.title("💰 Controle Financeiro")
 
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
-    "➕ Adicionar",
     "📊 Resumo",
     "📋 Lançamentos",
+    "➕ Adicionar",
     "📈 Análises",
     "⚙️ Gerenciamento"
 ])
 
 # ========================
-# ➕ ADICIONAR
+# 📊 RESUMO
 # ========================
 with tab1:
-    st.subheader("Adicionar transação")
+    st.subheader("📊 Visão geral")
+
+    receitas = df[df["Tipo"] == "Receita"]["Valor"].sum()
+    despesas = df[df["Tipo"] == "Despesa"]["Valor"].sum()
+    saldo = receitas - despesas
+
+    c1, c2, c3 = st.columns(3)
+    c1.metric("💰 Receitas", f"R$ {receitas:.2f}")
+    c2.metric("💸 Despesas", f"R$ {despesas:.2f}")
+    c3.metric("📊 Saldo", f"R$ {saldo:.2f}")
+
+    st.divider()
+
+    st.subheader("📅 Resumo do mês")
+
+    receitas_mes = df_filtrado[df_filtrado["Tipo"] == "Receita"]["Valor"].sum()
+    despesas_mes = df_filtrado[df_filtrado["Tipo"] == "Despesa"]["Valor"].sum()
+    saldo_mes = receitas_mes - despesas_mes
+
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Receitas (mês)", f"R$ {receitas_mes:.2f}")
+    c2.metric("Despesas (mês)", f"R$ {despesas_mes:.2f}")
+    c3.metric("Saldo (mês)", f"R$ {saldo_mes:.2f}")
+
+    st.divider()
+
+    st.subheader("📌 Contas fixas")
+
+    mes_atual = datetime.today().strftime("%Y-%m")
+
+    for conta in CONTAS_FIXAS:
+        lancado = df[
+            (df["Categoria"] == conta["categoria"]) &
+            (df["Mes"] == mes_atual)
+        ]
+
+        if lancado.empty:
+            st.error(f"🔴 {conta['nome']}")
+        else:
+            valor_pago = lancado["Valor"].sum()
+            st.success(f"🟢 {conta['nome']} — R$ {valor_pago:.2f}")
+
+# ========================
+# 📋 LANÇAMENTOS
+# ========================
+with tab2:
+    st.subheader("📋 Todos os lançamentos")
+
+    st.caption("💡 Use o filtro de mês para análise")
+
+    st.dataframe(
+        df_filtrado,
+        use_container_width=True,
+        hide_index=True
+    )
+
+# ========================
+# ➕ ADICIONAR
+# ========================
+with tab3:
+    st.subheader("➕ Nova transação")
 
     tipo = st.selectbox("Tipo", ["Receita", "Despesa"], key="tipo_add")
 
@@ -133,7 +217,7 @@ with tab1:
         submitted = st.form_submit_button("Adicionar")
 
     if submitted:
-        if valor > 0 and categoria:
+        if valor > 0:
             sheet.append_row([
                 str(data),
                 tipo,
@@ -144,82 +228,35 @@ with tab1:
             st.success("Transação adicionada!")
             st.rerun()
         else:
-            st.warning("Preencha corretamente")
-
-# ========================
-# 📊 RESUMO
-# ========================
-with tab2:
-    st.subheader("Resumo geral")
-
-    receitas = df[df["Tipo"] == "Receita"]["Valor"].sum()
-    despesas = df[df["Tipo"] == "Despesa"]["Valor"].sum()
-    saldo = receitas - despesas
-
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Receitas", f"R$ {receitas:.2f}")
-    c2.metric("Despesas", f"R$ {despesas:.2f}")
-    c3.metric("Saldo", f"R$ {saldo:.2f}")
-
-    st.subheader("Resumo do mês")
-
-    receitas_mes = df_filtrado[df_filtrado["Tipo"] == "Receita"]["Valor"].sum()
-    despesas_mes = df_filtrado[df_filtrado["Tipo"] == "Despesa"]["Valor"].sum()
-    saldo_mes = receitas_mes - despesas_mes
-
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Receitas (mês)", f"R$ {receitas_mes:.2f}")
-    c2.metric("Despesas (mês)", f"R$ {despesas_mes:.2f}")
-    c3.metric("Saldo (mês)", f"R$ {saldo_mes:.2f}")
-
-    st.subheader("Contas fixas")
-
-    mes_atual = datetime.today().strftime("%Y-%m")
-    cols = st.columns(len(CONTAS_FIXAS))
-
-    for i, conta in enumerate(CONTAS_FIXAS):
-        with cols[i]:
-            lancado = df[
-                (df["Categoria"] == conta["categoria"]) &
-                (df["Mes"] == mes_atual)
-            ]
-
-            if lancado.empty:
-                st.error(f"🔴 {conta['nome']}")
-            else:
-                valor_pago = lancado["Valor"].sum()
-                st.success(f"🟢 {conta['nome']}\nR$ {valor_pago:.2f}")
-
-# ========================
-# 📋 LANÇAMENTOS
-# ========================
-with tab3:
-    st.subheader("Todos os lançamentos")
-
-    st.dataframe(
-        df_filtrado.style.format({"Valor": "R$ {:.2f}"}),
-        use_container_width=True
-    )
+            st.warning("Valor inválido")
 
 # ========================
 # 📈 ANÁLISES
 # ========================
 with tab4:
-    st.subheader("Gastos por categoria")
+    st.subheader("📈 Gastos por categoria")
 
     despesas_df = df_filtrado[df_filtrado["Tipo"] == "Despesa"]
 
     if despesas_df.empty:
         st.info("Nenhuma despesa no mês")
     else:
-        grafico = despesas_df.groupby("Categoria")["Valor"].sum()
-        st.bar_chart(grafico)
+        resumo = despesas_df.groupby("Categoria", as_index=False)["Valor"].sum()
+
+        fig = px.bar(
+            resumo,
+            x="Categoria",
+            y="Valor",
+            text="Valor"
+        )
+
+        st.plotly_chart(fig, use_container_width=True)
 
 # ========================
 # ⚙️ GERENCIAMENTO
 # ========================
 with tab5:
-    st.subheader("Gerenciamento")
+    st.subheader("⚙️ Gerenciamento")
 
     if "confirmar_exclusao" not in st.session_state:
         st.session_state.confirmar_exclusao = False
