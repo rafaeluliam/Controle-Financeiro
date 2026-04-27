@@ -6,6 +6,11 @@ from datetime import datetime
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
+senha = st.text_input("Senha", type="password")
+
+if senha != st.secrets["app_password"]:
+    st.stop()
+
 # ========================
 # 🔐 CONEXÃO GOOGLE SHEETS
 # ========================
@@ -31,11 +36,6 @@ if dados:
     df = pd.DataFrame(dados)
 else:
     df = pd.DataFrame(columns=["Data", "Tipo", "Categoria", "Valor", "Descrição"])
-
-senha = st.text_input("Senha", type="password")
-
-if senha != st.secrets["app_password"]:
-    st.stop()
 
 # ========================
 # 🔧 TRATAMENTO DE DADOS
