@@ -68,8 +68,8 @@ df["Mes"] = df["Data"].dt.to_period("M").astype(str)
 # VARIÁVEIS
 # ========================
 CATEGORIAS = {
-    "Receita": ["Salário", "Freelance", "Outros"],
-    "Despesa": ["Aluguel", "Energia", "Água", "Lazer", "Financiamento"]
+    "Receita": ["Salário", "Outros"],
+    "Despesa": ["Aluguel", "Energia", "Água", "Lazer", "Financiamento", "Carro", "Internet"]
 }
 
 CONTAS_FIXAS = [
