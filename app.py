@@ -12,39 +12,38 @@ from oauth2client.service_account import ServiceAccountCredentials
 st.set_page_config(page_title="Controle Financeiro", layout="wide")
 
 # ========================
-# 📱 DETECÇÃO MOBILE SIMPLES
-# ========================
-is_mobile = st.query_params.get("mobile", ["0"])[0] == "1"
-
-# ========================
-# 🎨 CSS MOBILE-FIRST
+# 🎨 CSS VISUAL LEVE
 # ========================
 st.markdown("""
 <style>
-    .block-container {
-        padding-top: 1.2rem;
-        padding-left: 1rem;
-        padding-right: 1rem;
-    }
+.block-container {
+    padding-top: 1.2rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
+}
+
+/* melhora cards */
+.card {
+    background: linear-gradient(145deg, #161B22, #0F1117);
+    padding: 18px;
+    border-radius: 16px;
+    text-align: center;
+    margin-bottom: 10px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+}
 </style>
 """, unsafe_allow_html=True)
 
 # ========================
-# 💳 CARD UI
+# 💳 CARD
 # ========================
 def card(titulo, valor, cor="#4F8BF9"):
     st.markdown(f"""
-        <div style="
-            background-color:#161B22;
-            padding:16px;
-            border-radius:14px;
-            text-align:center;
-            margin-bottom:10px;
-        ">
-            <div style="color:#9CA3AF; font-size:14px;">
+        <div class="card">
+            <div style="color:#9CA3AF; font-size:13px;">
                 {titulo}
             </div>
-            <div style="color:{cor}; font-size:26px; font-weight:600;">
+            <div style="color:{cor}; font-size:28px; font-weight:700;">
                 {valor}
             </div>
         </div>
@@ -68,7 +67,7 @@ if not st.session_state.autenticado:
         st.stop()
 
 # ========================
-# 🔐 GOOGLE SHEETS
+# 🔐 GOOGLE SHEETS (CACHEADO)
 # ========================
 scope = [
     "https://spreadsheets.google.com/feeds",
@@ -83,15 +82,14 @@ creds = ServiceAccountCredentials.from_json_keyfile_dict(
 client = gspread.authorize(creds)
 sheet = client.open("Controle Financeiro").sheet1
 
-# ========================
-# 📥 DADOS
-# ========================
-dados = sheet.get_all_records()
+@st.cache_data(ttl=60)
+def load_data():
+    dados = sheet.get_all_records()
+    if dados:
+        return pd.DataFrame(dados)
+    return pd.DataFrame(columns=["Data", "Tipo", "Categoria", "Valor", "Descrição"])
 
-if dados:
-    df = pd.DataFrame(dados)
-else:
-    df = pd.DataFrame(columns=["Data", "Tipo", "Categoria", "Valor", "Descrição"])
+df = load_data()
 
 # ========================
 # 🔧 TRATAMENTO
@@ -110,39 +108,25 @@ CATEGORIAS = {
     "Despesa": ["Aluguel", "Energia", "Água", "Lazer", "Financiamento", "Carro", "Internet"]
 }
 
-CONTAS_FIXAS = [
-    {"nome": "Aluguel", "categoria": "Aluguel"},
-    {"nome": "Energia", "categoria": "Energia"},
-    {"nome": "Água", "categoria": "Água"},
-    {"nome": "Financiamento", "categoria": "Financiamento"},
-    {"nome": "Internet", "categoria": "Internet"},
-]
-
 # ========================
-# FILTRO
+# FILTRO MÊS (UX MELHOR)
 # ========================
 if not df.empty:
-    meses = df["Mes"].dropna().drop_duplicates().sort_values()
-    mes_atual_str = datetime.today().strftime("%Y-%m")
-
-    mes = st.selectbox(
-        "📅 Mês",
-        meses,
-        index=list(meses).index(mes_atual_str) if mes_atual_str in list(meses) else 0
-    )
-
+    meses = sorted(df["Mes"].dropna().unique())
+    mes = st.selectbox("📅 Mês", meses, index=len(meses)-1)
     df_filtrado = df[df["Mes"] == mes]
 else:
     df_filtrado = df.copy()
 
 # ========================
-# 🧭 SIDEBAR (MOBILE-FIRST + ORDEM NOVA)
+# 🧭 SIDEBAR LIMPA (APP STYLE)
 # ========================
 with st.sidebar:
-    st.title("💰 Menu")
+    st.markdown("## 💰 Finanças")
+    st.markdown("---")
 
     menu = st.radio(
-        "Navegação",
+        "Menu",
         [
             "➕ Adicionar",
             "📊 Dashboard",
@@ -151,6 +135,9 @@ with st.sidebar:
             "⚙️ Configurações"
         ]
     )
+
+    st.markdown("---")
+    st.caption("Controle financeiro pessoal")
 
 # ========================
 # ➕ ADICIONAR
@@ -184,10 +171,11 @@ if menu == "➕ Adicionar":
                 descricao
             ])
             st.success("Transação adicionada!")
+            st.cache_data.clear()
             st.rerun()
 
 # ========================
-# 📊 DASHBOARD (MOBILE-FIRST)
+# 📊 DASHBOARD
 # ========================
 if menu == "📊 Dashboard":
     st.title("📊 Dashboard")
@@ -196,56 +184,27 @@ if menu == "📊 Dashboard":
     despesas = df[df["Tipo"] == "Despesa"]["Valor"].sum()
     saldo = receitas - despesas
 
-    if is_mobile:
+    c1, c2, c3 = st.columns(3)
+    with c1:
         card("Receitas", f"R$ {receitas:.2f}", "#22C55E")
+    with c2:
         card("Despesas", f"R$ {despesas:.2f}", "#EF4444")
+    with c3:
         card("Saldo", f"R$ {saldo:.2f}", "#3B82F6")
-    else:
-        c1, c2, c3 = st.columns(3)
-        with c1:
-            card("Receitas", f"R$ {receitas:.2f}", "#22C55E")
-        with c2:
-            card("Despesas", f"R$ {despesas:.2f}", "#EF4444")
-        with c3:
-            card("Saldo", f"R$ {saldo:.2f}", "#3B82F6")
 
     st.divider()
-
-    st.subheader("📅 Mês selecionado")
 
     receitas_mes = df_filtrado[df_filtrado["Tipo"] == "Receita"]["Valor"].sum()
     despesas_mes = df_filtrado[df_filtrado["Tipo"] == "Despesa"]["Valor"].sum()
     saldo_mes = receitas_mes - despesas_mes
 
-    if is_mobile:
-        card("Receitas", f"R$ {receitas_mes:.2f}", "#22C55E")
-        card("Despesas", f"R$ {despesas_mes:.2f}", "#EF4444")
-        card("Saldo", f"R$ {saldo_mes:.2f}", "#3B82F6")
-    else:
-        c1, c2, c3 = st.columns(3)
-        with c1:
-            card("Receitas", f"R$ {receitas_mes:.2f}", "#22C55E")
-        with c2:
-            card("Despesas", f"R$ {despesas_mes:.2f}", "#EF4444")
-        with c3:
-            card("Saldo", f"R$ {saldo_mes:.2f}", "#3B82F6")
-
-    st.divider()
-
-    st.subheader("📌 Contas fixas")
-
-    mes_atual = datetime.today().strftime("%Y-%m")
-
-    for conta in CONTAS_FIXAS:
-        lancado = df[
-            (df["Categoria"] == conta["categoria"]) &
-            (df["Mes"] == mes_atual)
-        ]
-
-        if lancado.empty:
-            st.error(f"🔴 {conta['nome']}")
-        else:
-            st.success(f"🟢 {conta['nome']} — R$ {lancado['Valor'].sum():.2f}")
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        card("Receitas (mês)", f"R$ {receitas_mes:.2f}", "#22C55E")
+    with c2:
+        card("Despesas (mês)", f"R$ {despesas_mes:.2f}", "#EF4444")
+    with c3:
+        card("Saldo (mês)", f"R$ {saldo_mes:.2f}", "#3B82F6")
 
 # ========================
 # 📋 LANÇAMENTOS
@@ -257,7 +216,7 @@ if menu == "📋 Lançamentos":
         df_filtrado,
         use_container_width=True,
         hide_index=True,
-        height=400 if is_mobile else 600
+        height=550
     )
 
 # ========================
@@ -278,12 +237,11 @@ if menu == "📈 Análises":
             text="Valor"
         )
 
-        fig.update_layout(
-            height=300 if is_mobile else 450,
-            margin=dict(l=10, r=10, t=30, b=10)
-        )
+        fig.update_layout(height=450, margin=dict(l=10, r=10, t=30, b=10))
 
         st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.info("Sem dados no período")
 
 # ========================
 # ⚙️ CONFIGURAÇÕES
@@ -298,4 +256,5 @@ if menu == "⚙️ Configurações":
             sheet.clear()
             sheet.append_row(["Data", "Tipo", "Categoria", "Valor", "Descrição"])
             st.success("Dados apagados")
+            st.cache_data.clear()
             st.rerun()
