@@ -12,69 +12,6 @@ from oauth2client.service_account import ServiceAccountCredentials
 st.set_page_config(page_title="Controle Financeiro", layout="wide")
 
 # ========================
-# 📱 MOBILE-FIRST CSS + BOTTOM NAV
-# ========================
-st.markdown("""
-<style>
-
-.block-container {
-    padding-top: 1rem;
-    padding-left: 1rem;
-    padding-right: 1rem;
-    padding-bottom: 80px; /* espaço para bottom nav */
-}
-
-/* CARD */
-.card {
-    background-color: #161B22;
-    padding: 16px;
-    border-radius: 14px;
-    text-align: center;
-    margin-bottom: 10px;
-}
-
-/* BOTTOM NAV */
-.bottom-nav {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    height: 65px;
-    background-color: #161B22;
-    display: flex;
-    justify-content: space-around;
-    align-items: center;
-    border-top: 1px solid #2A2F3A;
-    z-index: 9999;
-}
-
-.nav-item {
-    text-decoration: none;
-    font-size: 22px;
-    color: #9CA3AF;
-}
-
-.nav-item.active {
-    color: #4F8BF9;
-}
-
-</style>
-""", unsafe_allow_html=True)
-
-# ========================
-# 💳 CARD FUNCTION
-# ========================
-def card(titulo, valor, cor="#4F8BF9"):
-    st.markdown(f"""
-        <div class="card">
-            <div style="color:#9CA3AF; font-size:14px;">{titulo}</div>
-            <div style="color:{cor}; font-size:26px; font-weight:600;">
-                {valor}
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
-
-# ========================
 # 🔒 LOGIN
 # ========================
 if "autenticado" not in st.session_state:
@@ -90,6 +27,77 @@ if not st.session_state.autenticado:
     else:
         st.warning("Digite a senha para acessar")
         st.stop()
+
+# ========================
+# 📱 STATE NAVEGAÇÃO (SEM RELOAD)
+# ========================
+if "page" not in st.session_state:
+    st.session_state.page = "dashboard"
+
+# ========================
+# 🎨 CSS MOBILE FIRST + BOTTOM NAV
+# ========================
+st.markdown("""
+<style>
+
+.block-container {
+    padding-top: 1rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
+    padding-bottom: 80px;
+}
+
+.card {
+    background-color: #161B22;
+    padding: 16px;
+    border-radius: 14px;
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+/* BOTTOM NAV FIXA */
+.bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 65px;
+    background-color: #161B22;
+    border-top: 1px solid #2A2F3A;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    z-index: 9999;
+}
+
+/* BOTÕES */
+.nav-btn {
+    background: none;
+    border: none;
+    font-size: 22px;
+    color: #9CA3AF;
+    cursor: pointer;
+}
+
+.nav-btn.active {
+    color: #4F8BF9;
+}
+
+</style>
+""", unsafe_allow_html=True)
+
+# ========================
+# 💳 CARD
+# ========================
+def card(titulo, valor, cor="#4F8BF9"):
+    st.markdown(f"""
+        <div class="card">
+            <div style="color:#9CA3AF; font-size:14px;">{titulo}</div>
+            <div style="color:{cor}; font-size:26px; font-weight:600;">
+                {valor}
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
 
 # ========================
 # 🔐 GOOGLE SHEETS
@@ -134,8 +142,16 @@ CATEGORIAS = {
     "Despesa": ["Aluguel", "Energia", "Água", "Lazer", "Financiamento", "Carro", "Internet"]
 }
 
+CONTAS_FIXAS = [
+    {"nome": "Aluguel", "categoria": "Aluguel"},
+    {"nome": "Energia", "categoria": "Energia"},
+    {"nome": "Água", "categoria": "Água"},
+    {"nome": "Financiamento", "categoria": "Financiamento"},
+    {"nome": "Internet", "categoria": "Internet"},
+]
+
 # ========================
-# FILTRO
+# FILTRO MÊS
 # ========================
 if not df.empty:
     meses = df["Mes"].dropna().drop_duplicates().sort_values()
@@ -152,30 +168,38 @@ else:
     df_filtrado = df.copy()
 
 # ========================
-# 🧭 BOTTOM NAV STATE
+# 📱 BOTTOM NAV FUNCIONAL
 # ========================
-if "page" not in st.session_state:
-    st.session_state.page = "dashboard"
-
-# clique via query params (opcional)
-query = st.query_params
-if "page" in query:
-    st.session_state.page = query["page"][0]
+def set_page(page):
+    st.session_state.page = page
 
 page = st.session_state.page
 
-# ========================
-# 📱 BOTTOM NAV
-# ========================
-st.markdown(f"""
-<div class="bottom-nav">
-    <a class="nav-item {'active' if page=='dashboard' else ''}" href="?page=dashboard">📊</a>
-    <a class="nav-item {'active' if page=='add' else ''}" href="?page=add">➕</a>
-    <a class="nav-item {'active' if page=='list' else ''}" href="?page=list">📋</a>
-    <a class="nav-item {'active' if page=='stats' else ''}" href="?page=stats">📈</a>
-    <a class="nav-item {'active' if page=='settings' else ''}" href="?page=settings">⚙️</a>
-</div>
-""", unsafe_allow_html=True)
+st.markdown('<div class="bottom-nav">', unsafe_allow_html=True)
+
+col1, col2, col3, col4, col5 = st.columns(5)
+
+with col1:
+    if st.button("📊", key="dash"):
+        set_page("dashboard")
+
+with col2:
+    if st.button("➕", key="add"):
+        set_page("add")
+
+with col3:
+    if st.button("📋", key="list"):
+        set_page("list")
+
+with col4:
+    if st.button("📈", key="stats"):
+        set_page("stats")
+
+with col5:
+    if st.button("⚙️", key="set"):
+        set_page("settings")
+
+st.markdown("</div>", unsafe_allow_html=True)
 
 # ========================
 # ➕ ADICIONAR
@@ -257,7 +281,7 @@ if page == "list":
     )
 
 # ========================
-# 📈 STATS
+# 📈 ANÁLISES
 # ========================
 if page == "stats":
     st.title("📈 Análises")
