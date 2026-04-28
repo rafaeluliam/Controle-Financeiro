@@ -249,12 +249,24 @@ if menu == "📈 Análises":
 if menu == "⚙️ Configurações":
     st.title("⚙️ Configurações")
 
+    if "confirmar_exclusao" not in st.session_state:
+        st.session_state.confirmar_exclusao = False
+
     if st.button("⚠️ Apagar todos os dados"):
+        st.session_state.confirmar_exclusao = True
+
+    if st.session_state.confirmar_exclusao:
         senha = st.text_input("Confirme a senha", type="password")
 
-        if senha == st.secrets["app_password"]:
-            sheet.clear()
-            sheet.append_row(["Data", "Tipo", "Categoria", "Valor", "Descrição"])
-            st.success("Dados apagados")
-            st.cache_data.clear()
-            st.rerun()
+        if st.button("Confirmar exclusão"):
+            if senha == st.secrets["app_password"]:
+                sheet.clear()
+                sheet.append_row(["Data", "Tipo", "Categoria", "Valor", "Descrição"])
+
+                st.success("Dados apagados com sucesso")
+
+                st.session_state.confirmar_exclusao = False
+                st.cache_data.clear()
+                st.rerun()
+            else:
+                st.error("Senha incorreta")
