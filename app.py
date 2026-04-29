@@ -94,7 +94,7 @@ df = load_data()
 # ========================
 # 🔧 TRATAMENTO
 # ========================
-df["Data"] = pd.to_datetime(df["Data"], errors="coerce", dayfirst=True)
+df["Data"] = pd.to_datetime(df["Data"], format="%Y-%m-%d", errors="coerce")
 df["Tipo"] = df["Tipo"].astype(str).str.strip()
 df["Categoria"] = df["Categoria"].astype(str).str.strip()
 df["Valor"] = pd.to_numeric(df["Valor"], errors="coerce")
@@ -164,7 +164,7 @@ if menu == "➕ Adicionar":
     if submit:
         if valor > 0:
             sheet.append_row([
-                str(data),
+                data.strftime("%Y-%m-%d"),
                 tipo,
                 categoria,
                 float(valor),
