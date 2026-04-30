@@ -32,7 +32,7 @@ def parse_valor(valor_str):
         return None
 
 # ========================
-# 🔢 CONVERSÃO (Sheets → pandas)
+# 🔢 CONVERSÃO
 # ========================
 def converter_valor(x):
     if pd.isna(x):
@@ -49,45 +49,42 @@ def converter_valor(x):
 # 🎨 CARD MODERNO
 # ========================
 def card(titulo, valor, cor="#4F8BF9", percentual=None):
-    barra = ""
-    
+    perc_texto = ""
+
     if percentual is not None:
-        barra = f"""
-        <div style="margin-top:10px;">
-            <div style="height:6px; background:#2A2F3A; border-radius:5px;">
-                <div style="
-                    width:{percentual}%;
-                    height:6px;
-                    background:{cor};
-                    border-radius:5px;
-                "></div>
-            </div>
-            <div style="font-size:12px; color:#9CA3AF; margin-top:4px;">
-                {percentual:.1f}% do mês
-            </div>
+        perc_texto = f"""
+        <div style="font-size:13px; color:#9CA3AF; margin-top:6px;">
+            {percentual:.1f}% da receita
         </div>
         """
 
     st.markdown(f"""
         <div style="
-            background: linear-gradient(145deg, #161B22, #0F1117);
-            padding:18px;
+            background: linear-gradient(160deg, #161B22, #0F1117);
+            padding:20px;
             border-radius:18px;
-            box-shadow: 0 6px 18px rgba(0,0,0,0.35);
-            margin-bottom:10px;
+            border:1px solid #2A2F3A;
+            box-shadow: 0 8px 22px rgba(0,0,0,0.45);
+            margin-bottom:12px;
         ">
-            <div style="font-size:13px; color:#9CA3AF;">
+            <div style="
+                font-size:16px;
+                font-weight:600;
+                color:#E5E7EB;
+                margin-bottom:6px;
+            ">
                 {titulo}
             </div>
+
             <div style="
-                font-size:26px;
+                font-size:28px;
                 font-weight:700;
                 color:{cor};
-                margin-top:4px;
             ">
                 {valor}
             </div>
-            {barra}
+
+            {perc_texto}
         </div>
     """, unsafe_allow_html=True)
 
@@ -228,7 +225,9 @@ if menu == "📊 Dashboard":
     st.subheader("Status das despesas do mês")
 
     despesas_mes_df = df_filtrado[df_filtrado["Tipo"] == "Despesa"]
-    total = despesas_mes_df["Valor"].sum()
+    receitas_mes_df = df_filtrado[df_filtrado["Tipo"] == "Receita"]
+
+    total_receita_mes = receitas_mes_df["Valor"].sum()
 
     cols = st.columns(3)
 
@@ -237,13 +236,16 @@ if menu == "📊 Dashboard":
 
         if not df_cat.empty:
             valor = df_cat["Valor"].sum()
-            percentual = (valor / total * 100) if total > 0 else 0
-            card(categoria, formatar_real(valor), "#22C55E", percentual)
+            cor = "#22C55E"
+            percentual = (valor / total_receita_mes * 100) if total_receita_mes > 0 else 0
+            texto = formatar_real(valor)
         else:
-            card(categoria, "Não lançado", "#EF4444", 0)
+            cor = "#EF4444"
+            percentual = 0
+            texto = "Não lançado"
 
         with cols[i % 3]:
-            pass
+            card(categoria, texto, cor, percentual)
 
 # ========================
 # 📋 LANÇAMENTOS
