@@ -71,7 +71,7 @@ def converter_valor(x):
         return None
 
 # ========================
-# CARD (STÁVEL)
+# CARD
 # ========================
 def card(titulo, valor, status="neutro", percentual=None):
 
@@ -156,8 +156,16 @@ CATEGORIAS = {
     "Despesa": ["Aluguel", "Energia", "Água", "Lazer", "Financiamento", "Carro", "Internet"]
 }
 
+# >>>>>> FILTRO DO CARD (NOVO) <<<<<<
+CATEGORIAS_CARD = ["Aluguel", "Água", "Energia", "Internet", "Financiamento"]
+
+# normalização simples
+df["Categoria_lower"] = df["Categoria"].str.lower()
+
+CATEGORIAS_CARD_LOWER = [c.lower() for c in CATEGORIAS_CARD]
+
 # ========================
-# FILTRO
+# FILTRO MÊS
 # ========================
 if not df.empty:
     meses = sorted(df["Mes"].dropna().unique())
@@ -243,8 +251,16 @@ if menu == "📊 Dashboard":
 
     cols = st.columns(3)
 
-    for i, categoria in enumerate(CATEGORIAS["Despesa"]):
-        df_cat = despesas_mes_df[despesas_mes_df["Categoria"] == categoria]
+    # >>>>>> ALTERAÇÃO PRINCIPAL AQUI <<<<<<
+    despesas_filtradas_card = despesas_mes_df[
+        despesas_mes_df["Categoria_lower"].isin(CATEGORIAS_CARD_LOWER)
+    ]
+
+    for i, categoria in enumerate(CATEGORIAS_CARD):
+
+        df_cat = despesas_filtradas_card[
+            despesas_filtradas_card["Categoria_lower"] == categoria.lower()
+        ]
 
         if not df_cat.empty:
             valor = df_cat["Valor"].sum()
