@@ -152,12 +152,12 @@ df["Mes"] = df["Data"].dt.to_period("M").astype(str)
 # VARIÁVEIS
 # ========================
 CATEGORIAS = {
+    "Despesa": ["Aluguel", "Energia", "Água", "G[as", "Lazer", "Financiamento", "Carro", "Internet", "Outros"]
     "Receita": ["Salário", "Outros"],
-    "Despesa": ["Aluguel", "Energia", "Água", "Lazer", "Financiamento", "Carro", "Internet"]
 }
 
 # >>>>>> FILTRO DO CARD (NOVO) <<<<<<
-CATEGORIAS_CARD = ["Aluguel", "Água", "Energia", "Internet", "Financiamento"]
+CATEGORIAS_CARD = ["Aluguel", "Água", "Gás", "Energia", "Internet", "Financiamento"]
 
 # normalização simples
 df["Categoria_lower"] = df["Categoria"].str.lower()
