@@ -12,27 +12,6 @@ from oauth2client.service_account import ServiceAccountCredentials
 st.set_page_config(page_title="Controle Financeiro", layout="wide")
 
 # ========================
-# 🎨 CSS
-# ========================
-st.markdown("""
-<style>
-.block-container {
-    padding-top: 1.2rem;
-    padding-left: 1rem;
-    padding-right: 1rem;
-}
-.card {
-    background: linear-gradient(145deg, #161B22, #0F1117);
-    padding: 18px;
-    border-radius: 16px;
-    text-align: center;
-    margin-bottom: 10px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
-}
-</style>
-""", unsafe_allow_html=True)
-
-# ========================
 # 💰 FORMATADOR BR
 # ========================
 def formatar_real(valor):
@@ -44,12 +23,9 @@ def formatar_real(valor):
 def parse_valor(valor_str):
     if not valor_str:
         return None
-
     valor_str = valor_str.strip()
-
     if "," in valor_str:
         valor_str = valor_str.replace(".", "").replace(",", ".")
-    
     try:
         return float(valor_str)
     except:
@@ -61,29 +37,57 @@ def parse_valor(valor_str):
 def converter_valor(x):
     if pd.isna(x):
         return None
-
     x = str(x).strip()
-
     if "," in x:
         x = x.replace(".", "").replace(",", ".")
-
     try:
         return float(x)
     except:
         return None
 
 # ========================
-# 💳 CARD
+# 🎨 CARD MODERNO
 # ========================
-def card(titulo, valor, cor="#4F8BF9"):
+def card(titulo, valor, cor="#4F8BF9", percentual=None):
+    barra = ""
+    
+    if percentual is not None:
+        barra = f"""
+        <div style="margin-top:10px;">
+            <div style="height:6px; background:#2A2F3A; border-radius:5px;">
+                <div style="
+                    width:{percentual}%;
+                    height:6px;
+                    background:{cor};
+                    border-radius:5px;
+                "></div>
+            </div>
+            <div style="font-size:12px; color:#9CA3AF; margin-top:4px;">
+                {percentual:.1f}% do mês
+            </div>
+        </div>
+        """
+
     st.markdown(f"""
-        <div class="card">
-            <div style="color:#9CA3AF; font-size:13px;">
+        <div style="
+            background: linear-gradient(145deg, #161B22, #0F1117);
+            padding:18px;
+            border-radius:18px;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+            margin-bottom:10px;
+        ">
+            <div style="font-size:13px; color:#9CA3AF;">
                 {titulo}
             </div>
-            <div style="color:{cor}; font-size:26px; font-weight:700;">
+            <div style="
+                font-size:26px;
+                font-weight:700;
+                color:{cor};
+                margin-top:4px;
+            ">
                 {valor}
             </div>
+            {barra}
         </div>
     """, unsafe_allow_html=True)
 
@@ -126,11 +130,8 @@ sheet = client.open("Controle Financeiro").sheet1
 @st.cache_data(ttl=60)
 def load_data():
     dados = sheet.get_all_values()
-
     if len(dados) > 1:
-        df = pd.DataFrame(dados[1:], columns=dados[0])
-        return df
-
+        return pd.DataFrame(dados[1:], columns=dados[0])
     return pd.DataFrame(columns=["Data", "Tipo", "Categoria", "Valor", "Descrição"])
 
 df = load_data()
@@ -167,18 +168,7 @@ else:
 # ========================
 with st.sidebar:
     st.markdown("## 💰 Finanças")
-    st.markdown("---")
-
-    menu = st.radio(
-        "Menu",
-        [
-            "➕ Adicionar",
-            "📊 Dashboard",
-            "📋 Lançamentos",
-            "📈 Análises",
-            "⚙️ Configurações"
-        ]
-    )
+    menu = st.radio("Menu", ["➕ Adicionar", "📊 Dashboard", "📋 Lançamentos", "📈 Análises", "⚙️ Configurações"])
 
 # ========================
 # ➕ ADICIONAR
@@ -199,7 +189,6 @@ if menu == "➕ Adicionar":
             valor_input = st.text_input("Valor (ex: 20,77)")
 
         descricao = st.text_input("Descrição")
-
         submit = st.form_submit_button("Adicionar")
 
     valor = parse_valor(valor_input)
@@ -213,12 +202,11 @@ if menu == "➕ Adicionar":
                 f"{valor:.2f}".replace(".", ","),
                 descricao
             ])
-
             st.success("Transação adicionada!")
             st.cache_data.clear()
             st.rerun()
         else:
-            st.error("Digite um valor válido")
+            st.error("Valor inválido")
 
 # ========================
 # 📊 DASHBOARD
@@ -235,13 +223,12 @@ if menu == "📊 Dashboard":
     card("Despesas", formatar_real(despesas), "#EF4444")
     card("Saldo", formatar_real(saldo), "#3B82F6")
 
-    # ========================
-    # STATUS DAS CONTAS
-    # ========================
+    # STATUS
     st.divider()
     st.subheader("Status das despesas do mês")
 
     despesas_mes_df = df_filtrado[df_filtrado["Tipo"] == "Despesa"]
+    total = despesas_mes_df["Valor"].sum()
 
     cols = st.columns(3)
 
@@ -250,67 +237,31 @@ if menu == "📊 Dashboard":
 
         if not df_cat.empty:
             valor = df_cat["Valor"].sum()
-            cor = "#22C55E"  # verde
-            texto = f"{formatar_real(valor)} ✓"
+            percentual = (valor / total * 100) if total > 0 else 0
+            card(categoria, formatar_real(valor), "#22C55E", percentual)
         else:
-            cor = "#EF4444"  # vermelho
-            texto = "Não lançado"
+            card(categoria, "Não lançado", "#EF4444", 0)
 
         with cols[i % 3]:
-            card(categoria, texto, cor)
+            pass
 
 # ========================
 # 📋 LANÇAMENTOS
 # ========================
 if menu == "📋 Lançamentos":
-    st.title("📋 Lançamentos")
-
     df_exibicao = df_filtrado.copy()
     df_exibicao["Valor"] = df_exibicao["Valor"].apply(formatar_real)
-
     st.dataframe(df_exibicao, use_container_width=True, hide_index=True)
 
 # ========================
 # 📈 ANÁLISES
 # ========================
 if menu == "📈 Análises":
-    st.title("📈 Análises")
-
     despesas_df = df_filtrado[df_filtrado["Tipo"] == "Despesa"]
 
     if not despesas_df.empty:
         resumo = despesas_df.groupby("Categoria", as_index=False)["Valor"].sum()
-
         fig = px.bar(resumo, x="Categoria", y="Valor", text="Valor")
-
         st.plotly_chart(fig, use_container_width=True)
     else:
-        st.info("Sem dados no período")
-
-# ========================
-# ⚙️ CONFIG
-# ========================
-if menu == "⚙️ Configurações":
-    st.title("⚙️ Configurações")
-
-    if "confirmar_exclusao" not in st.session_state:
-        st.session_state.confirmar_exclusao = False
-
-    if st.button("⚠️ Apagar todos os dados"):
-        st.session_state.confirmar_exclusao = True
-
-    if st.session_state.confirmar_exclusao:
-        senha = st.text_input("Confirme a senha", type="password")
-
-        if st.button("Confirmar exclusão"):
-            if senha == st.secrets["app_password"]:
-                sheet.clear()
-                sheet.append_row(["Data", "Tipo", "Categoria", "Valor", "Descrição"])
-
-                st.success("Dados apagados com sucesso")
-
-                st.session_state.confirmar_exclusao = False
-                st.cache_data.clear()
-                st.rerun()
-            else:
-                st.error("Senha incorreta")
+        st.info("Sem dados")
