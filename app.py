@@ -39,7 +39,7 @@ def formatar_real(valor):
     return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 # ========================
-# 🔢 PARSER BR
+# 🔢 PARSER INPUT
 # ========================
 def parse_valor(valor_str):
     if not valor_str:
@@ -49,8 +49,26 @@ def parse_valor(valor_str):
 
     if "," in valor_str:
         valor_str = valor_str.replace(".", "").replace(",", ".")
+    
     try:
         return float(valor_str)
+    except:
+        return None
+
+# ========================
+# 🔢 CONVERSÃO SEGURA (Sheets → pandas)
+# ========================
+def converter_valor(x):
+    if pd.isna(x):
+        return None
+
+    x = str(x).strip()
+
+    if "," in x:
+        x = x.replace(".", "").replace(",", ".")
+
+    try:
+        return float(x)
     except:
         return None
 
@@ -102,11 +120,17 @@ creds = ServiceAccountCredentials.from_json_keyfile_dict(
 client = gspread.authorize(creds)
 sheet = client.open("Controle Financeiro").sheet1
 
+# ========================
+# 🔄 LOAD DATA (CORRIGIDO)
+# ========================
 @st.cache_data(ttl=60)
 def load_data():
-    dados = sheet.get_all_records()
-    if dados:
-        return pd.DataFrame(dados)
+    dados = sheet.get_all_values()  # 🔥 CORREÇÃO PRINCIPAL
+
+    if len(dados) > 1:
+        df = pd.DataFrame(dados[1:], columns=dados[0])
+        return df
+
     return pd.DataFrame(columns=["Data", "Tipo", "Categoria", "Valor", "Descrição"])
 
 df = load_data()
@@ -117,23 +141,10 @@ df = load_data()
 df["Data"] = pd.to_datetime(df["Data"], format="%Y-%m-%d", errors="coerce")
 df["Tipo"] = df["Tipo"].astype(str).str.strip()
 df["Categoria"] = df["Categoria"].astype(str).str.strip()
-def converter_valor(x):
-    if pd.isna(x):
-        return None
 
-    x = str(x).strip()
-
-    # caso tenha vírgula → padrão BR
-    if "," in x:
-        x = x.replace(".", "").replace(",", ".")
-    
-    try:
-        return float(x)
-    except:
-        return None
-
-
+# 🔥 conversão correta aqui
 df["Valor"] = df["Valor"].apply(converter_valor)
+
 df["Mes"] = df["Data"].dt.to_period("M").astype(str)
 
 # ========================
@@ -205,7 +216,7 @@ if menu == "➕ Adicionar":
                 data.strftime("%Y-%m-%d"),
                 tipo,
                 categoria,
-                f"{valor:.2f}".replace(".", ","),  # 🔥 CORREÇÃO AQUI
+                f"{valor:.2f}".replace(".", ","),  # salva como BR
                 descricao
             ])
 
