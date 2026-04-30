@@ -65,27 +65,28 @@ def card(titulo, valor, status="neutro", percentual=None):
         bg = "#161B22"
         texto_extra = ""
 
-    st.markdown(f"""
-    <div style="
-        background:{bg};
-        border:1px solid {cor};
-        border-radius:14px;
-        padding:16px;
-        margin-bottom:10px;
-    ">
-        <div style="font-size:15px; color:#9CA3AF;">
-            {titulo}
-        </div>
+    with st.container():  # 🔥 ESSA LINHA RESOLVE O BUG
+        st.markdown(f"""
+        <div style="
+            background:{bg};
+            border:1px solid {cor};
+            border-radius:14px;
+            padding:16px;
+            margin-bottom:10px;
+        ">
+            <div style="font-size:15px; color:#9CA3AF;">
+                {titulo}
+            </div>
 
-        <div style="font-size:26px; font-weight:700; color:white;">
-            {valor}
-        </div>
+            <div style="font-size:26px; font-weight:700; color:white;">
+                {valor}
+            </div>
 
-        <div style="font-size:13px; color:#9CA3AF;">
-            {texto_extra}
+            <div style="font-size:13px; color:#9CA3AF;">
+                {texto_extra}
+            </div>
         </div>
-    </div>
-    """, unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
 
 # ========================
 # LOGIN
