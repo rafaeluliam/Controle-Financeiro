@@ -56,7 +56,7 @@ def parse_valor(valor_str):
         return None
 
 # ========================
-# 🔢 CONVERSÃO SEGURA (Sheets → pandas)
+# 🔢 CONVERSÃO (Sheets → pandas)
 # ========================
 def converter_valor(x):
     if pd.isna(x):
@@ -81,7 +81,7 @@ def card(titulo, valor, cor="#4F8BF9"):
             <div style="color:#9CA3AF; font-size:13px;">
                 {titulo}
             </div>
-            <div style="color:{cor}; font-size:28px; font-weight:700;">
+            <div style="color:{cor}; font-size:26px; font-weight:700;">
                 {valor}
             </div>
         </div>
@@ -121,11 +121,11 @@ client = gspread.authorize(creds)
 sheet = client.open("Controle Financeiro").sheet1
 
 # ========================
-# 🔄 LOAD DATA (CORRIGIDO)
+# LOAD DATA
 # ========================
 @st.cache_data(ttl=60)
 def load_data():
-    dados = sheet.get_all_values()  # 🔥 CORREÇÃO PRINCIPAL
+    dados = sheet.get_all_values()
 
     if len(dados) > 1:
         df = pd.DataFrame(dados[1:], columns=dados[0])
@@ -136,15 +136,12 @@ def load_data():
 df = load_data()
 
 # ========================
-# 🔧 TRATAMENTO
+# TRATAMENTO
 # ========================
 df["Data"] = pd.to_datetime(df["Data"], format="%Y-%m-%d", errors="coerce")
 df["Tipo"] = df["Tipo"].astype(str).str.strip()
 df["Categoria"] = df["Categoria"].astype(str).str.strip()
-
-# 🔥 conversão correta aqui
 df["Valor"] = df["Valor"].apply(converter_valor)
-
 df["Mes"] = df["Data"].dt.to_period("M").astype(str)
 
 # ========================
@@ -152,7 +149,7 @@ df["Mes"] = df["Data"].dt.to_period("M").astype(str)
 # ========================
 CATEGORIAS = {
     "Receita": ["Salário", "Outros"],
-    "Despesa": ["Aluguel", "Energia", "Água",, "Gás", "Lazer", "Financiamento", "Carro", "Internet"]
+    "Despesa": ["Aluguel", "Energia", "Água", "Lazer", "Financiamento", "Carro", "Internet"]
 }
 
 # ========================
@@ -182,9 +179,6 @@ with st.sidebar:
             "⚙️ Configurações"
         ]
     )
-
-    st.markdown("---")
-    st.caption("Controle financeiro pessoal")
 
 # ========================
 # ➕ ADICIONAR
@@ -216,7 +210,7 @@ if menu == "➕ Adicionar":
                 data.strftime("%Y-%m-%d"),
                 tipo,
                 categoria,
-                f"{valor:.2f}".replace(".", ","),  # salva como BR
+                f"{valor:.2f}".replace(".", ","),
                 descricao
             ])
 
@@ -224,7 +218,7 @@ if menu == "➕ Adicionar":
             st.cache_data.clear()
             st.rerun()
         else:
-            st.error("Digite um valor válido (ex: 20,77)")
+            st.error("Digite um valor válido")
 
 # ========================
 # 📊 DASHBOARD
@@ -240,6 +234,30 @@ if menu == "📊 Dashboard":
     card("Receitas", formatar_real(receitas), "#22C55E")
     card("Despesas", formatar_real(despesas), "#EF4444")
     card("Saldo", formatar_real(saldo), "#3B82F6")
+
+    # ========================
+    # STATUS DAS CONTAS
+    # ========================
+    st.divider()
+    st.subheader("Status das despesas do mês")
+
+    despesas_mes_df = df_filtrado[df_filtrado["Tipo"] == "Despesa"]
+
+    cols = st.columns(3)
+
+    for i, categoria in enumerate(CATEGORIAS["Despesa"]):
+        df_cat = despesas_mes_df[despesas_mes_df["Categoria"] == categoria]
+
+        if not df_cat.empty:
+            valor = df_cat["Valor"].sum()
+            cor = "#22C55E"  # verde
+            texto = f"{formatar_real(valor)} ✓"
+        else:
+            cor = "#EF4444"  # vermelho
+            texto = "Não lançado"
+
+        with cols[i % 3]:
+            card(categoria, texto, cor)
 
 # ========================
 # 📋 LANÇAMENTOS
@@ -264,13 +282,6 @@ if menu == "📈 Análises":
         resumo = despesas_df.groupby("Categoria", as_index=False)["Valor"].sum()
 
         fig = px.bar(resumo, x="Categoria", y="Valor", text="Valor")
-
-        fig.update_traces(
-            texttemplate="R$ %{y:,.2f}",
-            textposition="outside"
-        )
-
-        fig.update_yaxes(tickprefix="R$ ")
 
         st.plotly_chart(fig, use_container_width=True)
     else:
