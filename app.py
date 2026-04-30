@@ -173,7 +173,7 @@ if menu == "➕ Adicionar":
 
     tipo = st.selectbox("Tipo", ["Receita", "Despesa"])
 
-    with st.form("form"):
+    with st.form("form", clear_on_submit=True):
         col1, col2 = st.columns(2)
 
         with col1:
