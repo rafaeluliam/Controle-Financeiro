@@ -181,19 +181,25 @@ if menu == "➕ Adicionar":
 
         with col2:
             categoria = st.selectbox("Categoria", CATEGORIAS[tipo])
-
-            valor_input = st.text_input(
-                "Valor (ex: 20,77)",
-                key="valor_input",
-                value=""
-            )
+            valor_input = st.text_input("Valor (ex: 20,77)")
 
         descricao = st.text_input("Descrição")
 
         submit = st.form_submit_button("Adicionar")
 
-    # DEBUG (remova depois)
-    st.write("DEBUG valor_input:", repr(valor_input))
+    # Parser LIMPO (sem regex agressivo)
+    def parse_valor(valor_str):
+        if not valor_str:
+            return None
+        valor_str = valor_str.strip()
+
+        # padrão BR
+        if "," in valor_str:
+            valor_str = valor_str.replace(".", "").replace(",", ".")
+        try:
+            return float(valor_str)
+        except:
+            return None
 
     valor = parse_valor(valor_input)
 
@@ -203,12 +209,9 @@ if menu == "➕ Adicionar":
                 data.strftime("%Y-%m-%d"),
                 tipo,
                 categoria,
-                float(valor),
+                valor,
                 descricao
             ])
-
-            # RESET DO INPUT (ESSENCIAL)
-            st.session_state["valor_input"] = ""
 
             st.success("Transação adicionada!")
             st.cache_data.clear()
