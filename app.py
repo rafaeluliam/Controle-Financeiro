@@ -152,8 +152,8 @@ df["Mes"] = df["Data"].dt.to_period("M").astype(str)
 # VARIÁVEIS
 # ========================
 CATEGORIAS = {
-    "Despesa": ["Aluguel", "Energia", "Água", "Gás", "Lazer", "Financiamento", "Carro", "Internet", "Outros"]
-    "Receita": ["Salário", "Outros"],
+    "Despesa": ["Aluguel", "Energia", "Água", "Gás", "Lazer", "Financiamento", "Carro", "Internet", "Outros"],
+    "Receita": ["Salário", "Outros"]
 }
 
 # >>>>>> FILTRO DO CARD (NOVO) <<<<<<
