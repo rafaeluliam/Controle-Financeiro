@@ -43,7 +43,17 @@ def formatar_real(valor):
 # ========================
 def parse_valor(valor_str):
     try:
-        return float(valor_str.replace(".", "").replace(",", "."))
+        valor_str = valor_str.strip()
+
+        # remove tudo que não for número, vírgula ou ponto
+        import re
+        valor_str = re.sub(r"[^\d,\.]", "", valor_str)
+
+        # trata formato BR
+        if "," in valor_str:
+            valor_str = valor_str.replace(".", "").replace(",", ".")
+
+        return float(valor_str)
     except:
         return None
 
