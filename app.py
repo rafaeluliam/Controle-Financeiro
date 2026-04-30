@@ -12,6 +12,42 @@ from oauth2client.service_account import ServiceAccountCredentials
 st.set_page_config(page_title="Controle Financeiro", layout="wide")
 
 # ========================
+# 🎨 CSS (CARDS BONITOS)
+# ========================
+st.markdown("""
+<style>
+
+/* card */
+div[data-testid="stMetric"] {
+    background: linear-gradient(160deg, #161B22, #0F1117);
+    border: 1px solid #2A2F3A;
+    padding: 16px;
+    border-radius: 14px;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.35);
+}
+
+/* título */
+div[data-testid="stMetricLabel"] {
+    font-size: 14px !important;
+    color: #9CA3AF !important;
+    font-weight: 500;
+}
+
+/* valor */
+div[data-testid="stMetricValue"] {
+    font-size: 26px !important;
+    font-weight: 700;
+}
+
+/* delta */
+div[data-testid="stMetricDelta"] {
+    font-size: 13px !important;
+}
+
+</style>
+""", unsafe_allow_html=True)
+
+# ========================
 # FORMATADOR BR
 # ========================
 def formatar_real(valor):
@@ -46,10 +82,11 @@ def converter_valor(x):
         return None
 
 # ========================
-# CARD (SEM HTML)
+# CARD
 # ========================
-def card(titulo, valor, cor="normal", percentual=None):
+def card(titulo, valor, cor=None, percentual=None):
     delta = None
+    delta_color = "off"
 
     if percentual is not None:
         delta = f"{percentual:.1f}% da receita"
@@ -58,8 +95,6 @@ def card(titulo, valor, cor="normal", percentual=None):
         delta_color = "normal"
     elif cor == "vermelho":
         delta_color = "inverse"
-    else:
-        delta_color = "off"
 
     st.metric(
         label=titulo,
@@ -220,7 +255,6 @@ if menu == "📊 Dashboard":
         if not df_cat.empty:
             valor = df_cat["Valor"].sum()
             percentual = (valor / total_receita_mes * 100) if total_receita_mes > 0 else 0
-
             cor = "verde"
             texto = formatar_real(valor)
         else:
