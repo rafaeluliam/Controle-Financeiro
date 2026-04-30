@@ -117,6 +117,13 @@ df = load_data()
 df["Data"] = pd.to_datetime(df["Data"], format="%Y-%m-%d", errors="coerce")
 df["Tipo"] = df["Tipo"].astype(str).str.strip()
 df["Categoria"] = df["Categoria"].astype(str).str.strip()
+df["Valor"] = (
+    df["Valor"]
+    .astype(str)
+    .str.replace(".", "", regex=False)   # remove milhar
+    .str.replace(",", ".", regex=False)  # vírgula → ponto
+)
+
 df["Valor"] = pd.to_numeric(df["Valor"], errors="coerce")
 df["Mes"] = df["Data"].dt.to_period("M").astype(str)
 
