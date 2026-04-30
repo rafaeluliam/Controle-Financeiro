@@ -46,34 +46,34 @@ def converter_valor(x):
         return None
 
 # ========================
-# CARD (HTML ESTÁVEL)
+# CARD (CORRETO)
 # ========================
 def card(titulo, valor, status="neutro", percentual=None):
 
     if status == "verde":
-        cor_borda = "#22C55E"
-        cor_bg = "#0f1f17"
-        status_txt = f"{percentual:.1f}% da receita" if percentual else "Lançado"
+        cor = "#22C55E"
+        bg = "#0f1f17"
+        texto_extra = f"{percentual:.1f}% da receita" if percentual else "Lançado"
 
     elif status == "vermelho":
-        cor_borda = "#EF4444"
-        cor_bg = "#1f1111"
-        status_txt = "Não lançado"
+        cor = "#EF4444"
+        bg = "#1f1111"
+        texto_extra = "Não lançado"
 
     else:
-        cor_borda = "#2A2F3A"
-        cor_bg = "#161B22"
-        status_txt = ""
+        cor = "#2A2F3A"
+        bg = "#161B22"
+        texto_extra = ""
 
-    html = f"""
+    st.markdown(f"""
     <div style="
-        background:{cor_bg};
-        border:1px solid {cor_borda};
+        background:{bg};
+        border:1px solid {cor};
         border-radius:14px;
         padding:16px;
         margin-bottom:10px;
     ">
-        <div style="font-size:15px; color:#9CA3AF; margin-bottom:6px;">
+        <div style="font-size:15px; color:#9CA3AF;">
             {titulo}
         </div>
 
@@ -81,13 +81,11 @@ def card(titulo, valor, status="neutro", percentual=None):
             {valor}
         </div>
 
-        <div style="font-size:13px; color:#9CA3AF; margin-top:6px;">
-            {status_txt}
+        <div style="font-size:13px; color:#9CA3AF;">
+            {texto_extra}
         </div>
     </div>
-    """
-
-    st.markdown(html, unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
 # ========================
 # LOGIN
@@ -166,7 +164,10 @@ else:
 # ========================
 with st.sidebar:
     st.markdown("## 💰 Finanças")
-    menu = st.radio("Menu", ["➕ Adicionar", "📊 Dashboard", "📋 Lançamentos", "📈 Análises"])
+    menu = st.radio(
+        "Menu",
+        ["➕ Adicionar", "📊 Dashboard", "📋 Lançamentos", "📈 Análises", "⚙️ Configurações"]
+    )
 
 # ========================
 # ADICIONAR
@@ -241,7 +242,6 @@ if menu == "📊 Dashboard":
         if not df_cat.empty:
             valor = df_cat["Valor"].sum()
             percentual = (valor / total_receita_mes * 100) if total_receita_mes > 0 else 0
-
             status = "verde"
             texto = formatar_real(valor)
         else:
@@ -272,3 +272,28 @@ if menu == "📈 Análises":
         st.plotly_chart(fig, use_container_width=True)
     else:
         st.info("Sem dados")
+
+# ========================
+# CONFIGURAÇÕES
+# ========================
+if menu == "⚙️ Configurações":
+
+    if "confirmar_exclusao" not in st.session_state:
+        st.session_state.confirmar_exclusao = False
+
+    if st.button("⚠️ Apagar todos os dados"):
+        st.session_state.confirmar_exclusao = True
+
+    if st.session_state.confirmar_exclusao:
+        senha = st.text_input("Confirme a senha", type="password")
+
+        if st.button("Confirmar exclusão"):
+            if senha == st.secrets["app_password"]:
+                sheet.clear()
+                sheet.append_row(["Data", "Tipo", "Categoria", "Valor", "Descrição"])
+                st.success("Dados apagados com sucesso")
+                st.session_state.confirmar_exclusao = False
+                st.cache_data.clear()
+                st.rerun()
+            else:
+                st.error("Senha incorreta")
