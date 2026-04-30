@@ -12,6 +12,31 @@ from oauth2client.service_account import ServiceAccountCredentials
 st.set_page_config(page_title="Controle Financeiro", layout="wide")
 
 # ========================
+# CSS (CARD ESTÁVEL)
+# ========================
+st.markdown("""
+<style>
+div[data-testid="stMetric"] {
+    background: linear-gradient(160deg, #161B22, #0F1117);
+    border-radius: 14px;
+    padding: 16px;
+    border: 1px solid #2A2F3A;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+div[data-testid="stMetricValue"] {
+    font-size: 26px !important;
+    font-weight: 700;
+}
+
+div[data-testid="stMetricLabel"] {
+    font-size: 15px !important;
+    color: #9CA3AF !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# ========================
 # FORMATADOR BR
 # ========================
 def formatar_real(valor):
@@ -46,47 +71,28 @@ def converter_valor(x):
         return None
 
 # ========================
-# CARD (CORRETO)
+# CARD (STÁVEL)
 # ========================
 def card(titulo, valor, status="neutro", percentual=None):
 
     if status == "verde":
-        cor = "#22C55E"
-        bg = "#0f1f17"
-        texto_extra = f"{percentual:.1f}% da receita" if percentual else "Lançado"
+        delta = f"{percentual:.1f}% da receita" if percentual else "Lançado"
+        delta_color = "normal"
 
     elif status == "vermelho":
-        cor = "#EF4444"
-        bg = "#1f1111"
-        texto_extra = "Não lançado"
+        delta = "Não lançado"
+        delta_color = "inverse"
 
     else:
-        cor = "#2A2F3A"
-        bg = "#161B22"
-        texto_extra = ""
+        delta = None
+        delta_color = "off"
 
-    with st.container():  # 🔥 ESSA LINHA RESOLVE O BUG
-        st.markdown(f"""
-        <div style="
-            background:{bg};
-            border:1px solid {cor};
-            border-radius:14px;
-            padding:16px;
-            margin-bottom:10px;
-        ">
-            <div style="font-size:15px; color:#9CA3AF;">
-                {titulo}
-            </div>
-
-            <div style="font-size:26px; font-weight:700; color:white;">
-                {valor}
-            </div>
-
-            <div style="font-size:13px; color:#9CA3AF;">
-                {texto_extra}
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+    st.metric(
+        label=titulo,
+        value=valor,
+        delta=delta,
+        delta_color=delta_color
+    )
 
 # ========================
 # LOGIN
