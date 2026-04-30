@@ -46,49 +46,27 @@ def converter_valor(x):
         return None
 
 # ========================
-# CARD (CORRIGIDO)
+# CARD (SEM HTML)
 # ========================
-def card(titulo, valor, cor="#4F8BF9", percentual=None):
-    perc_texto = ""
+def card(titulo, valor, cor="normal", percentual=None):
+    delta = None
 
     if percentual is not None:
-        perc_texto = f"""
-        <div style="font-size:13px; color:#9CA3AF; margin-top:6px;">
-            {percentual:.1f}% da receita
-        </div>
-        """
+        delta = f"{percentual:.1f}% da receita"
 
-    html = f"""
-    <div style="
-        background: linear-gradient(160deg, #161B22, #0F1117);
-        padding:20px;
-        border-radius:18px;
-        border:1px solid #2A2F3A;
-        box-shadow: 0 8px 22px rgba(0,0,0,0.45);
-        margin-bottom:12px;
-    ">
-        <div style="
-            font-size:16px;
-            font-weight:600;
-            color:#E5E7EB;
-            margin-bottom:6px;
-        ">
-            {titulo}
-        </div>
+    if cor == "verde":
+        delta_color = "normal"
+    elif cor == "vermelho":
+        delta_color = "inverse"
+    else:
+        delta_color = "off"
 
-        <div style="
-            font-size:28px;
-            font-weight:700;
-            color:{cor};
-        ">
-            {valor}
-        </div>
-
-        {perc_texto}
-    </div>
-    """
-
-    st.markdown(html, unsafe_allow_html=True)
+    st.metric(
+        label=titulo,
+        value=valor,
+        delta=delta,
+        delta_color=delta_color
+    )
 
 # ========================
 # LOGIN
@@ -220,13 +198,12 @@ if menu == "📊 Dashboard":
     c1, c2, c3 = st.columns(3)
 
     with c1:
-        card("Receitas", formatar_real(receitas), "#22C55E")
+        card("Receitas", formatar_real(receitas))
     with c2:
-        card("Despesas", formatar_real(despesas), "#EF4444")
+        card("Despesas", formatar_real(despesas))
     with c3:
-        card("Saldo", formatar_real(saldo), "#3B82F6")
+        card("Saldo", formatar_real(saldo))
 
-    # STATUS POR CATEGORIA
     st.divider()
     st.subheader("Status das despesas do mês")
 
@@ -242,12 +219,13 @@ if menu == "📊 Dashboard":
 
         if not df_cat.empty:
             valor = df_cat["Valor"].sum()
-            cor = "#22C55E"
             percentual = (valor / total_receita_mes * 100) if total_receita_mes > 0 else 0
+
+            cor = "verde"
             texto = formatar_real(valor)
         else:
-            cor = "#EF4444"
-            percentual = 0
+            cor = "vermelho"
+            percentual = None
             texto = "Não lançado"
 
         with cols[i % 3]:
