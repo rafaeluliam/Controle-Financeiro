@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 from datetime import datetime
+import re
 
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
@@ -39,20 +40,26 @@ def formatar_real(valor):
     return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 # ========================
-# 🔢 PARSER BR
+# 🔢 PARSER BLINDADO
 # ========================
 def parse_valor(valor_str):
+    if not valor_str:
+        return None
+
+    valor_str = valor_str.strip()
+
+    # Se NÃO tiver vírgula → trata direto
+    if "," not in valor_str:
+        try:
+            return float(valor_str)
+        except:
+            return None
+
+    # Se tiver vírgula → padrão BR
+    valor_str = re.sub(r"[^\d,]", "", valor_str)
+    valor_str = valor_str.replace(",", ".")
+
     try:
-        valor_str = valor_str.strip()
-
-        # remove tudo que não for número, vírgula ou ponto
-        import re
-        valor_str = re.sub(r"[^\d,\.]", "", valor_str)
-
-        # trata formato BR
-        if "," in valor_str:
-            valor_str = valor_str.replace(".", "").replace(",", ".")
-
         return float(valor_str)
     except:
         return None
@@ -178,13 +185,21 @@ if menu == "➕ Adicionar":
 
         with col2:
             categoria = st.selectbox("Categoria", CATEGORIAS[tipo])
-            valor_input = st.text_input("Valor (ex: 20,77)")
+
+            valor_input = st.text_input(
+                "Valor (ex: 20,77)",
+                key="valor_input",
+                value=""
+            )
 
         descricao = st.text_input("Descrição")
 
         submit = st.form_submit_button("Adicionar")
 
-    valor = parse_valor(valor_input) if valor_input else None
+    # DEBUG (remova depois)
+    st.write("DEBUG valor_input:", repr(valor_input))
+
+    valor = parse_valor(valor_input)
 
     if submit:
         if valor is not None and valor > 0:
@@ -195,6 +210,10 @@ if menu == "➕ Adicionar":
                 float(valor),
                 descricao
             ])
+
+            # RESET DO INPUT (ESSENCIAL)
+            st.session_state["valor_input"] = ""
+
             st.success("Transação adicionada!")
             st.cache_data.clear()
             st.rerun()
@@ -216,17 +235,6 @@ if menu == "📊 Dashboard":
     card("Despesas", formatar_real(despesas), "#EF4444")
     card("Saldo", formatar_real(saldo), "#3B82F6")
 
-    st.divider()
-
-    receitas_mes = df_filtrado[df_filtrado["Tipo"] == "Receita"]["Valor"].sum()
-    despesas_mes = df_filtrado[df_filtrado["Tipo"] == "Despesa"]["Valor"].sum()
-    saldo_mes = receitas_mes - despesas_mes
-
-    c1, c2, c3 = st.columns(3)
-    card("Receitas (mês)", formatar_real(receitas_mes), "#22C55E")
-    card("Despesas (mês)", formatar_real(despesas_mes), "#EF4444")
-    card("Saldo (mês)", formatar_real(saldo_mes), "#3B82F6")
-
 # ========================
 # 📋 LANÇAMENTOS
 # ========================
@@ -236,12 +244,7 @@ if menu == "📋 Lançamentos":
     df_exibicao = df_filtrado.copy()
     df_exibicao["Valor"] = df_exibicao["Valor"].apply(formatar_real)
 
-    st.dataframe(
-        df_exibicao,
-        use_container_width=True,
-        hide_index=True,
-        height=550
-    )
+    st.dataframe(df_exibicao, use_container_width=True, hide_index=True)
 
 # ========================
 # 📈 ANÁLISES
@@ -254,12 +257,7 @@ if menu == "📈 Análises":
     if not despesas_df.empty:
         resumo = despesas_df.groupby("Categoria", as_index=False)["Valor"].sum()
 
-        fig = px.bar(
-            resumo,
-            x="Categoria",
-            y="Valor",
-            text="Valor"
-        )
+        fig = px.bar(resumo, x="Categoria", y="Valor", text="Valor")
 
         fig.update_traces(
             texttemplate="R$ %{y:,.2f}",
@@ -267,8 +265,6 @@ if menu == "📈 Análises":
         )
 
         fig.update_yaxes(tickprefix="R$ ")
-
-        fig.update_layout(height=450)
 
         st.plotly_chart(fig, use_container_width=True)
     else:
