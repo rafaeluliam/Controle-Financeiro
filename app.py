@@ -117,11 +117,14 @@ df = load_data()
 df["Data"] = pd.to_datetime(df["Data"], format="%Y-%m-%d", errors="coerce")
 df["Tipo"] = df["Tipo"].astype(str).str.strip()
 df["Categoria"] = df["Categoria"].astype(str).str.strip()
-df["Valor"] = pd.read_csv(
-    pd.Series(df["Valor"]).to_csv(index=False),
-    decimal=",",
-    thousands="."
-)["Valor"]
+df["Valor"] = (
+    df["Valor"]
+    .astype(str)
+    .str.replace(".", "", regex=False)
+    .str.replace(",", ".", regex=False)
+)
+
+df["Valor"] = df["Valor"].astype(float)
 df["Mes"] = df["Data"].dt.to_period("M").astype(str)
 
 # ========================
