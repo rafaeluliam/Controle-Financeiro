@@ -117,14 +117,23 @@ df = load_data()
 df["Data"] = pd.to_datetime(df["Data"], format="%Y-%m-%d", errors="coerce")
 df["Tipo"] = df["Tipo"].astype(str).str.strip()
 df["Categoria"] = df["Categoria"].astype(str).str.strip()
-df["Valor"] = (
-    df["Valor"]
-    .astype(str)
-    .str.replace(".", "", regex=False)
-    .str.replace(",", ".", regex=False)
-)
+def converter_valor(x):
+    if pd.isna(x):
+        return None
 
-df["Valor"] = df["Valor"].astype(float)
+    x = str(x).strip()
+
+    # caso tenha vírgula → padrão BR
+    if "," in x:
+        x = x.replace(".", "").replace(",", ".")
+    
+    try:
+        return float(x)
+    except:
+        return None
+
+
+df["Valor"] = df["Valor"].apply(converter_valor)
 df["Mes"] = df["Data"].dt.to_period("M").astype(str)
 
 # ========================
