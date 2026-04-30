@@ -12,13 +12,13 @@ from oauth2client.service_account import ServiceAccountCredentials
 st.set_page_config(page_title="Controle Financeiro", layout="wide")
 
 # ========================
-# 💰 FORMATADOR BR
+# FORMATADOR BR
 # ========================
 def formatar_real(valor):
     return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 # ========================
-# 🔢 PARSER INPUT
+# PARSER INPUT
 # ========================
 def parse_valor(valor_str):
     if not valor_str:
@@ -32,7 +32,7 @@ def parse_valor(valor_str):
         return None
 
 # ========================
-# 🔢 CONVERSÃO
+# CONVERSÃO SHEETS
 # ========================
 def converter_valor(x):
     if pd.isna(x):
@@ -46,7 +46,7 @@ def converter_valor(x):
         return None
 
 # ========================
-# 🎨 CARD MODERNO
+# CARD (CORRIGIDO)
 # ========================
 def card(titulo, valor, cor="#4F8BF9", percentual=None):
     perc_texto = ""
@@ -58,38 +58,40 @@ def card(titulo, valor, cor="#4F8BF9", percentual=None):
         </div>
         """
 
-    st.markdown(f"""
+    html = f"""
+    <div style="
+        background: linear-gradient(160deg, #161B22, #0F1117);
+        padding:20px;
+        border-radius:18px;
+        border:1px solid #2A2F3A;
+        box-shadow: 0 8px 22px rgba(0,0,0,0.45);
+        margin-bottom:12px;
+    ">
         <div style="
-            background: linear-gradient(160deg, #161B22, #0F1117);
-            padding:20px;
-            border-radius:18px;
-            border:1px solid #2A2F3A;
-            box-shadow: 0 8px 22px rgba(0,0,0,0.45);
-            margin-bottom:12px;
+            font-size:16px;
+            font-weight:600;
+            color:#E5E7EB;
+            margin-bottom:6px;
         ">
-            <div style="
-                font-size:16px;
-                font-weight:600;
-                color:#E5E7EB;
-                margin-bottom:6px;
-            ">
-                {titulo}
-            </div>
-
-            <div style="
-                font-size:28px;
-                font-weight:700;
-                color:{cor};
-            ">
-                {valor}
-            </div>
-
-            {perc_texto}
+            {titulo}
         </div>
-    """, unsafe_allow_html=True)
+
+        <div style="
+            font-size:28px;
+            font-weight:700;
+            color:{cor};
+        ">
+            {valor}
+        </div>
+
+        {perc_texto}
+    </div>
+    """
+
+    st.markdown(html, unsafe_allow_html=True)
 
 # ========================
-# 🔒 LOGIN
+# LOGIN
 # ========================
 if "autenticado" not in st.session_state:
     st.session_state.autenticado = False
@@ -106,7 +108,7 @@ if not st.session_state.autenticado:
         st.stop()
 
 # ========================
-# 🔐 GOOGLE SHEETS
+# GOOGLE SHEETS
 # ========================
 scope = [
     "https://spreadsheets.google.com/feeds",
@@ -168,7 +170,7 @@ with st.sidebar:
     menu = st.radio("Menu", ["➕ Adicionar", "📊 Dashboard", "📋 Lançamentos", "📈 Análises", "⚙️ Configurações"])
 
 # ========================
-# ➕ ADICIONAR
+# ADICIONAR
 # ========================
 if menu == "➕ Adicionar":
     st.title("➕ Nova transação")
@@ -206,7 +208,7 @@ if menu == "➕ Adicionar":
             st.error("Valor inválido")
 
 # ========================
-# 📊 DASHBOARD
+# DASHBOARD
 # ========================
 if menu == "📊 Dashboard":
     st.title("📊 Dashboard")
@@ -216,11 +218,15 @@ if menu == "📊 Dashboard":
     saldo = receitas - despesas
 
     c1, c2, c3 = st.columns(3)
-    card("Receitas", formatar_real(receitas), "#22C55E")
-    card("Despesas", formatar_real(despesas), "#EF4444")
-    card("Saldo", formatar_real(saldo), "#3B82F6")
 
-    # STATUS
+    with c1:
+        card("Receitas", formatar_real(receitas), "#22C55E")
+    with c2:
+        card("Despesas", formatar_real(despesas), "#EF4444")
+    with c3:
+        card("Saldo", formatar_real(saldo), "#3B82F6")
+
+    # STATUS POR CATEGORIA
     st.divider()
     st.subheader("Status das despesas do mês")
 
@@ -248,7 +254,7 @@ if menu == "📊 Dashboard":
             card(categoria, texto, cor, percentual)
 
 # ========================
-# 📋 LANÇAMENTOS
+# LANÇAMENTOS
 # ========================
 if menu == "📋 Lançamentos":
     df_exibicao = df_filtrado.copy()
@@ -256,7 +262,7 @@ if menu == "📋 Lançamentos":
     st.dataframe(df_exibicao, use_container_width=True, hide_index=True)
 
 # ========================
-# 📈 ANÁLISES
+# ANÁLISES
 # ========================
 if menu == "📈 Análises":
     despesas_df = df_filtrado[df_filtrado["Tipo"] == "Despesa"]
