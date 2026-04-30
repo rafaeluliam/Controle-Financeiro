@@ -48,16 +48,12 @@ def parse_valor(valor_str):
 
     valor_str = valor_str.strip()
 
-    # Se NÃO tiver vírgula → trata direto
-    if "," not in valor_str:
-        try:
-            return float(valor_str)
-        except:
-            return None
+    # mantém números, vírgula e ponto
+    valor_str = re.sub(r"[^\d,\.]", "", valor_str)
 
-    # Se tiver vírgula → padrão BR
-    valor_str = re.sub(r"[^\d,]", "", valor_str)
-    valor_str = valor_str.replace(",", ".")
+    # se tiver vírgula → padrão BR
+    if "," in valor_str:
+        valor_str = valor_str.replace(".", "").replace(",", ".")
 
     try:
         return float(valor_str)
