@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 from datetime import datetime
-import re
 
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
@@ -40,7 +39,7 @@ def formatar_real(valor):
     return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 # ========================
-# 🔢 PARSER BLINDADO
+# 🔢 PARSER BR
 # ========================
 def parse_valor(valor_str):
     if not valor_str:
@@ -48,13 +47,8 @@ def parse_valor(valor_str):
 
     valor_str = valor_str.strip()
 
-    # mantém números, vírgula e ponto
-    valor_str = re.sub(r"[^\d,\.]", "", valor_str)
-
-    # se tiver vírgula → padrão BR
     if "," in valor_str:
         valor_str = valor_str.replace(".", "").replace(",", ".")
-
     try:
         return float(valor_str)
     except:
@@ -187,20 +181,6 @@ if menu == "➕ Adicionar":
 
         submit = st.form_submit_button("Adicionar")
 
-    # Parser LIMPO (sem regex agressivo)
-    def parse_valor(valor_str):
-        if not valor_str:
-            return None
-        valor_str = valor_str.strip()
-
-        # padrão BR
-        if "," in valor_str:
-            valor_str = valor_str.replace(".", "").replace(",", ".")
-        try:
-            return float(valor_str)
-        except:
-            return None
-
     valor = parse_valor(valor_input)
 
     if submit:
@@ -209,7 +189,7 @@ if menu == "➕ Adicionar":
                 data.strftime("%Y-%m-%d"),
                 tipo,
                 categoria,
-                valor,
+                f"{valor:.2f}".replace(".", ","),  # 🔥 CORREÇÃO AQUI
                 descricao
             ])
 
