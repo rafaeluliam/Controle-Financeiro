@@ -12,60 +12,6 @@ from oauth2client.service_account import ServiceAccountCredentials
 st.set_page_config(page_title="Controle Financeiro", layout="wide")
 
 # ========================
-# 🎨 CSS (CARDS)
-# ========================
-st.markdown("""
-<style>
-
-/* container do card */
-.card-box {
-    padding: 10px;
-    border-radius: 14px;
-    margin-bottom: 10px;
-}
-
-/* cores */
-.card-verde {
-    border: 1px solid #22C55E;
-    background: linear-gradient(160deg, #0f1f17, #0a1410);
-}
-
-.card-vermelho {
-    border: 1px solid #EF4444;
-    background: linear-gradient(160deg, #1f1111, #140a0a);
-}
-
-.card-neutro {
-    border: 1px solid #2A2F3A;
-    background: linear-gradient(160deg, #161B22, #0F1117);
-}
-
-/* remove fundo padrão do metric */
-div[data-testid="stMetric"] {
-    background: transparent;
-    border: none;
-    box-shadow: none;
-}
-
-/* texto */
-div[data-testid="stMetricLabel"] {
-    font-size: 14px !important;
-    color: #9CA3AF !important;
-}
-
-div[data-testid="stMetricValue"] {
-    font-size: 26px !important;
-    font-weight: 700;
-}
-
-div[data-testid="stMetricDelta"] {
-    font-size: 13px !important;
-}
-
-</style>
-""", unsafe_allow_html=True)
-
-# ========================
 # FORMATADOR BR
 # ========================
 def formatar_real(valor):
@@ -100,35 +46,48 @@ def converter_valor(x):
         return None
 
 # ========================
-# CARD
+# CARD (HTML ESTÁVEL)
 # ========================
 def card(titulo, valor, status="neutro", percentual=None):
 
     if status == "verde":
-        classe = "card-verde"
-        delta = f"{percentual:.1f}% da receita" if percentual else "Lançado"
-        delta_color = "normal"
+        cor_borda = "#22C55E"
+        cor_bg = "#0f1f17"
+        status_txt = f"{percentual:.1f}% da receita" if percentual else "Lançado"
 
     elif status == "vermelho":
-        classe = "card-vermelho"
-        delta = "Não lançado"
-        delta_color = "inverse"
+        cor_borda = "#EF4444"
+        cor_bg = "#1f1111"
+        status_txt = "Não lançado"
 
     else:
-        classe = "card-neutro"
-        delta = None
-        delta_color = "off"
+        cor_borda = "#2A2F3A"
+        cor_bg = "#161B22"
+        status_txt = ""
 
-    st.markdown(f'<div class="card-box {classe}">', unsafe_allow_html=True)
+    html = f"""
+    <div style="
+        background:{cor_bg};
+        border:1px solid {cor_borda};
+        border-radius:14px;
+        padding:16px;
+        margin-bottom:10px;
+    ">
+        <div style="font-size:15px; color:#9CA3AF; margin-bottom:6px;">
+            {titulo}
+        </div>
 
-    st.metric(
-        label=titulo,
-        value=valor,
-        delta=delta,
-        delta_color=delta_color
-    )
+        <div style="font-size:26px; font-weight:700; color:white;">
+            {valor}
+        </div>
 
-    st.markdown('</div>', unsafe_allow_html=True)
+        <div style="font-size:13px; color:#9CA3AF; margin-top:6px;">
+            {status_txt}
+        </div>
+    </div>
+    """
+
+    st.markdown(html, unsafe_allow_html=True)
 
 # ========================
 # LOGIN
@@ -207,7 +166,45 @@ else:
 # ========================
 with st.sidebar:
     st.markdown("## 💰 Finanças")
-    menu = st.radio("Menu", ["➕ Adicionar", "📊 Dashboard", "📋 Lançamentos", "📈 Análises", "⚙️ Configurações"])
+    menu = st.radio("Menu", ["➕ Adicionar", "📊 Dashboard", "📋 Lançamentos", "📈 Análises"])
+
+# ========================
+# ADICIONAR
+# ========================
+if menu == "➕ Adicionar":
+    st.title("➕ Nova transação")
+
+    tipo = st.selectbox("Tipo", ["Receita", "Despesa"])
+
+    with st.form("form", clear_on_submit=True):
+        col1, col2 = st.columns(2)
+
+        with col1:
+            data = st.date_input("Data", datetime.today())
+
+        with col2:
+            categoria = st.selectbox("Categoria", CATEGORIAS[tipo])
+            valor_input = st.text_input("Valor (ex: 20,77)")
+
+        descricao = st.text_input("Descrição")
+        submit = st.form_submit_button("Adicionar")
+
+    valor = parse_valor(valor_input)
+
+    if submit:
+        if valor is not None and valor > 0:
+            sheet.append_row([
+                data.strftime("%Y-%m-%d"),
+                tipo,
+                categoria,
+                f"{valor:.2f}".replace(".", ","),
+                descricao
+            ])
+            st.success("Transação adicionada!")
+            st.cache_data.clear()
+            st.rerun()
+        else:
+            st.error("Valor inválido")
 
 # ========================
 # DASHBOARD
@@ -254,3 +251,24 @@ if menu == "📊 Dashboard":
 
         with cols[i % 3]:
             card(categoria, texto, status, percentual)
+
+# ========================
+# LANÇAMENTOS
+# ========================
+if menu == "📋 Lançamentos":
+    df_exibicao = df_filtrado.copy()
+    df_exibicao["Valor"] = df_exibicao["Valor"].apply(formatar_real)
+    st.dataframe(df_exibicao, use_container_width=True, hide_index=True)
+
+# ========================
+# ANÁLISES
+# ========================
+if menu == "📈 Análises":
+    despesas_df = df_filtrado[df_filtrado["Tipo"] == "Despesa"]
+
+    if not despesas_df.empty:
+        resumo = despesas_df.groupby("Categoria", as_index=False)["Valor"].sum()
+        fig = px.bar(resumo, x="Categoria", y="Valor", text="Valor")
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.info("Sem dados")
