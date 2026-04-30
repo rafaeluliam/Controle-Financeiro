@@ -152,7 +152,7 @@ df["Mes"] = df["Data"].dt.to_period("M").astype(str)
 # ========================
 CATEGORIAS = {
     "Receita": ["Salário", "Outros"],
-    "Despesa": ["Aluguel", "Energia", "Água", "Lazer", "Financiamento", "Carro", "Internet"]
+    "Despesa": ["Aluguel", "Energia", "Água",, "Gás", "Lazer", "Financiamento", "Carro", "Internet"]
 }
 
 # ========================
