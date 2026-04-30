@@ -12,7 +12,7 @@ from oauth2client.service_account import ServiceAccountCredentials
 st.set_page_config(page_title="Controle Financeiro", layout="wide")
 
 # ========================
-# 🎨 CSS VISUAL LEVE
+# 🎨 CSS
 # ========================
 st.markdown("""
 <style>
@@ -21,8 +21,6 @@ st.markdown("""
     padding-left: 1rem;
     padding-right: 1rem;
 }
-
-/* melhora cards */
 .card {
     background: linear-gradient(145deg, #161B22, #0F1117);
     padding: 18px;
@@ -33,6 +31,21 @@ st.markdown("""
 }
 </style>
 """, unsafe_allow_html=True)
+
+# ========================
+# 💰 FORMATADOR BR
+# ========================
+def formatar_real(valor):
+    return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+# ========================
+# 🔢 PARSER BR
+# ========================
+def parse_valor(valor_str):
+    try:
+        return float(valor_str.replace(".", "").replace(",", "."))
+    except:
+        return None
 
 # ========================
 # 💳 CARD
@@ -67,7 +80,7 @@ if not st.session_state.autenticado:
         st.stop()
 
 # ========================
-# 🔐 GOOGLE SHEETS (CACHEADO)
+# 🔐 GOOGLE SHEETS
 # ========================
 scope = [
     "https://spreadsheets.google.com/feeds",
@@ -109,7 +122,7 @@ CATEGORIAS = {
 }
 
 # ========================
-# FILTRO MÊS (UX MELHOR)
+# FILTRO
 # ========================
 if not df.empty:
     meses = sorted(df["Mes"].dropna().unique())
@@ -119,7 +132,7 @@ else:
     df_filtrado = df.copy()
 
 # ========================
-# 🧭 SIDEBAR LIMPA (APP STYLE)
+# SIDEBAR
 # ========================
 with st.sidebar:
     st.markdown("## 💰 Finanças")
@@ -155,14 +168,16 @@ if menu == "➕ Adicionar":
 
         with col2:
             categoria = st.selectbox("Categoria", CATEGORIAS[tipo])
-            valor = st.number_input("Valor", min_value=0.0, format="%.2f")
+            valor_input = st.text_input("Valor (ex: 20,77)")
 
         descricao = st.text_input("Descrição")
 
         submit = st.form_submit_button("Adicionar")
 
+    valor = parse_valor(valor_input) if valor_input else None
+
     if submit:
-        if valor > 0:
+        if valor is not None and valor > 0:
             sheet.append_row([
                 data.strftime("%Y-%m-%d"),
                 tipo,
@@ -173,6 +188,8 @@ if menu == "➕ Adicionar":
             st.success("Transação adicionada!")
             st.cache_data.clear()
             st.rerun()
+        else:
+            st.error("Digite um valor válido (ex: 20,77)")
 
 # ========================
 # 📊 DASHBOARD
@@ -185,12 +202,9 @@ if menu == "📊 Dashboard":
     saldo = receitas - despesas
 
     c1, c2, c3 = st.columns(3)
-    with c1:
-        card("Receitas", f"R$ {receitas:.2f}", "#22C55E")
-    with c2:
-        card("Despesas", f"R$ {despesas:.2f}", "#EF4444")
-    with c3:
-        card("Saldo", f"R$ {saldo:.2f}", "#3B82F6")
+    card("Receitas", formatar_real(receitas), "#22C55E")
+    card("Despesas", formatar_real(despesas), "#EF4444")
+    card("Saldo", formatar_real(saldo), "#3B82F6")
 
     st.divider()
 
@@ -199,12 +213,9 @@ if menu == "📊 Dashboard":
     saldo_mes = receitas_mes - despesas_mes
 
     c1, c2, c3 = st.columns(3)
-    with c1:
-        card("Receitas (mês)", f"R$ {receitas_mes:.2f}", "#22C55E")
-    with c2:
-        card("Despesas (mês)", f"R$ {despesas_mes:.2f}", "#EF4444")
-    with c3:
-        card("Saldo (mês)", f"R$ {saldo_mes:.2f}", "#3B82F6")
+    card("Receitas (mês)", formatar_real(receitas_mes), "#22C55E")
+    card("Despesas (mês)", formatar_real(despesas_mes), "#EF4444")
+    card("Saldo (mês)", formatar_real(saldo_mes), "#3B82F6")
 
 # ========================
 # 📋 LANÇAMENTOS
@@ -212,8 +223,11 @@ if menu == "📊 Dashboard":
 if menu == "📋 Lançamentos":
     st.title("📋 Lançamentos")
 
+    df_exibicao = df_filtrado.copy()
+    df_exibicao["Valor"] = df_exibicao["Valor"].apply(formatar_real)
+
     st.dataframe(
-        df_filtrado,
+        df_exibicao,
         use_container_width=True,
         hide_index=True,
         height=550
@@ -237,14 +251,21 @@ if menu == "📈 Análises":
             text="Valor"
         )
 
-        fig.update_layout(height=450, margin=dict(l=10, r=10, t=30, b=10))
+        fig.update_traces(
+            texttemplate="R$ %{y:,.2f}",
+            textposition="outside"
+        )
+
+        fig.update_yaxes(tickprefix="R$ ")
+
+        fig.update_layout(height=450)
 
         st.plotly_chart(fig, use_container_width=True)
     else:
         st.info("Sem dados no período")
 
 # ========================
-# ⚙️ CONFIGURAÇÕES
+# ⚙️ CONFIG
 # ========================
 if menu == "⚙️ Configurações":
     st.title("⚙️ Configurações")
